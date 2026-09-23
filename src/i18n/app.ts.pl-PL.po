@@ -1,0 +1,41 @@
+msgid ""
+msgstr ""
+"Language: pl-PL\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/app.ts:224
+msgid "Example users from backend API:"
+msgstr "Przykładowi użytkownicy z serwera API"
+
+#: src/app.ts:205
+msgid "Example hello world from backend API:"
+msgstr "Przykładowe witaj świecie z server-a API"
+
+#: src/app.ts:171
+msgid "Basic app info"
+msgstr "Podstawowe informacje o aplikacji"
+
+#: src/app.ts:172
+msgid "Name"
+msgstr "Nazwa"
+
+#: src/app.ts:173
+msgid "Angular version:"
+msgstr "Wersja Angulara:"
+
+#: src/app.ts:174
+msgid "Taon backend:"
+msgstr "Taon server:"
+
+#: src/app.ts:198
+msgid "Add new example user with random name"
+msgstr "Dodaj nowego przykładowego użytkownika z losowym imieniem"
+
+#: src/app.ts:206
+msgid "hello world from backend:"
+msgstr "witaj świecie z servera:"
+
+#: src/app.ts:214
+msgid "Copyright"
+msgstr "Wszelkie prawa zastrzeżone"

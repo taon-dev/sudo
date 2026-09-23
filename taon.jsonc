@@ -1,0 +1,47 @@
+{
+  "type": "isomorphic-lib",
+  "packageJsonOverride": {
+    "author": "Dfilipiak",
+    "description": "Description for sudo. Hello world!",
+    "private": true,
+    "scripts": {}
+  },
+  "version": "v21",
+  "shouldGenerateAutogenIndexFile": true,
+  "generateTranslationsFor": [
+    "en-US",
+    "pl-PL"
+  ],
+  "shouldGenerateTranslationFiles": true,
+  "shouldGenerateAutogenAppRoutesFile": true,
+  "autoReleaseConfigAllowedItems": [
+    {
+      "artifactName": "npm-lib-and-cli-tool",
+      "releaseType": "manual-taon",
+      "taskName": "npm"
+    },
+    {
+      "artifactName": "angular-node-app",
+      "askUserBeforeFinalAction": true,
+      "envName": "static-pages",
+      "releaseType": "manual-static-pages",
+      "taskName": "static-pages"
+    },
+    {
+      "artifactName": "angular-node-app",
+      "askUserBeforeFinalAction": false,
+      "envName": "localhost",
+      "releaseType": "manual-taon",
+      "taonInstanceIp": "127.0.0.1",
+      "taskName": "localhost"
+    },
+    {
+      "artifactName": "angular-node-app",
+      "askUserBeforeFinalAction": false,
+      "envName": "cloudflare",
+      "releaseType": "manual-cloudflare",
+      "taskName": "cloudflare"
+    }
+  ],
+  "appId": "com.domain.example.sudo"
+}

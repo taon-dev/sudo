@@ -1,5 +1,6 @@
 {
   "type": "isomorphic-lib",
+  "overrideNpmName": "@taon-dev/sudo",
   "packageJsonOverride": {
     "author": "Dfilipiak",
     "description": "Description for sudo. Hello world!",

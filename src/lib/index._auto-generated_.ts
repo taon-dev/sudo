@@ -7,3 +7,6 @@ export * from './build-info._auto-generated_';
 export * from './my-organization-proj'; 
 export * from './start-cli'; 
 export * from './i18n/lib.translation'; 
+export * from './taon-sudo-backoffice/taon-sudo-backoffice.component'; // @browser
+export * from './taon-sudo-backoffice/taon-sudo-backoffice.models'; 
+export * from './taon-sudo-backoffice/taon-sudo-backoffice.routes'; // @browser

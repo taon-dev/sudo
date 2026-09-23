@@ -1,0 +1,15 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-subtitle>WEBSQL MODE</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-checkbox
+      [disabled]="!isWebSQLMode"
+      [ngModel]="taonAdminService.keepWebsqlDbDataAfterReload()"
+      (change)="
+        taonAdminService.keepWebsqlDbDataAfterReload.set($event.checked)
+      ">
+      Don't remove data when re-loading
+    </mat-checkbox>
+  </mat-card-content>
+</mat-card>

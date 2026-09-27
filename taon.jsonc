@@ -4,7 +4,7 @@
   "packageJsonOverride": {
     "author": "Dfilipiak",
     "description": "Description for sudo. Hello world!",
-    "private": true,
+    "private": false,
     "scripts": {}
   },
   "version": "v21",

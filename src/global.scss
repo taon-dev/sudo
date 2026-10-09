@@ -5,8 +5,8 @@
 // tailwind included out of box
 @import 'tailwindcss';
 
-@import 'primeicons/primeicons.css';
-@import 'animate.css/animate.min.css';
+// @import 'primeicons/primeicons.css';
+// @import 'animate.css/animate.min.css';
 
 @include mat.core();
 
@@ -90,5 +90,5 @@ html {
     color 200ms ease;
 
   margin: 0px !important; // TODO QUICK FIX for weird chrome padding
-  overflow: hidden; // for ngx-scrollbar to work
+  // overflow: hidden; // for ngx-scrollbar to work
 }

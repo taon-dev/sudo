@@ -2,6 +2,7 @@
   <mat-card-header>
     <mat-card-subtitle>WEBSQL MODE</mat-card-subtitle>
   </mat-card-header>
+
   <mat-card-content>
     <mat-checkbox
       [disabled]="!isWebSQLMode"
@@ -11,5 +12,50 @@
       ">
       Don't remove data when re-loading
     </mat-checkbox>
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="!mt-4">
+  <mat-card-header>
+    <mat-card-subtitle>SKIP ERROR NOTIFICATIONS</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <table class="w-full">
+      <thead>
+        <tr class="text-left">
+          <th class="py-2">Error</th>
+          <th class="w-[100px] py-2 text-center">HTTP</th>
+          <th class="w-[100px] py-2 text-center">Skip</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @for (status of errorStatuses; track status) {
+          <tr class="border-t border-gray-200">
+            <td class="py-2">
+              <div class="font-medium">
+                {{ statusMessages[status] }}
+              </div>
+
+              <div class="text-xs opacity-60">
+                {{ status }}
+              </div>
+            </td>
+
+            <td class="py-2 text-center">
+              {{ getStatusCode(status) }}
+            </td>
+
+            <td class="py-2 text-center">
+              <mat-checkbox
+                [checked]="isSkipped(status)"
+                (change)="setSkipped(status, $event.checked)">
+              </mat-checkbox>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </mat-card-content>
 </mat-card>

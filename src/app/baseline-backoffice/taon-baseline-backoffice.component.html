@@ -1,0 +1,23 @@
+<taon-backoffice-notifications [filter]="filter" />
+<taon-admin-layout
+  [routes]="adminRoutes"
+  [outlet]="outlet"
+  basePath="/backoffice">
+  <div
+    header
+    class="flex h-16 items-center px-6">
+    <strong>{{ title }}</strong>
+  </div>
+
+  <div
+    asideFooter
+    class="text-xs text-gray-500">
+    Taon Admin v1.0
+  </div>
+
+  <div
+    contentFooter
+    class="text-xs text-gray-500">
+    fixed content here
+  </div>
+</taon-admin-layout>

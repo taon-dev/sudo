@@ -31,23 +31,15 @@ import { Helpers } from 'tnp-core/src';
 export class TaonSudoBackofficeComponent {
   public readonly isWebSQLMode: boolean = Helpers.getIsWebSQL();
 
+  componentLoaded = false;
+
+  onRouteActivate(component: any): void {
+    this.componentLoaded = !!component;
+  }
+
+  onRouteDeactivate(component: any): void {
+    this.componentLoaded = false;
+  }
+
   public readonly taonAdminService = inject(TaonAdminService);
-
-  public readonly errorStatuses = Object.values(HttpStatusEnum).filter(
-    status => getStatusCode(status) >= 400,
-  );
-
-  public readonly statusMessages = getHttpStatusCodeMessages();
-
-  public isSkipped(status: HttpStatusEnum): boolean {
-    return this.taonAdminService.skipShowingErrors().includes(status);
-  }
-
-  public setSkipped(status: HttpStatusEnum, checked: boolean): void {
-    this.taonAdminService.setSkipShowingError(status, checked);
-  }
-
-  public getStatusCode(status: HttpStatusEnum): number {
-    return getStatusCode(status);
-  }
 }

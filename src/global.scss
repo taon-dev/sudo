@@ -2,6 +2,8 @@
 // @use 'bootstrap/scss/bootstrap' as *; Conflict with primeflex
 @use '@angular/material' as mat;
 
+@use '@ngneat/hot-toast/src/styles/styles';
+
 // tailwind included out of box
 @import 'tailwindcss';
 

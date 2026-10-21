@@ -1,0 +1,1 @@
+export * from './taon-sudo-data-backoffice.component'; // @browser

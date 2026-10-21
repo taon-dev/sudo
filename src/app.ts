@@ -46,9 +46,9 @@ import {
   DEFAULT_SESSION_EMAIL,
   DEFAULT_SESSION_PASSWORD,
   TaonSessionAbstractContext,
-  TaonSessionButtonComponent,
   TaonSessionProvider,
 } from '@taon-dev/session/src';
+import { TaonSessionButtonComponent } from '@taon-dev/session/src'; //@browser
 import { providePrimeNG } from 'primeng/config'; // @browser
 import { BehaviorSubject, map, switchMap } from 'rxjs';
 import {
@@ -71,7 +71,11 @@ import {
   ENV_ANGULAR_NODE_APP_CONFIG_GOOGLE_SECRET,
   ENV_ANGULAR_NODE_APP_CONFIG_SUPER_USERS,
 } from './lib/env/env.angular-node-app';
-import { TaonBaselineBackofficeOutletName, TaonDraggableButtonPanelComponent } from '@taon-dev/ui/src';
+import {
+  TaonBaselineBackofficeOutletName,
+  TaonDraggableButtonPanelComponent,
+  TaonDraggableButtonPanelState,
+} from '@taon-dev/ui/src'; // @browser
 // @placeholder-for-imports
 
 //#endregion
@@ -128,6 +132,7 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP, {
             <taon-draggable-button-panel
               title="Taon Admin"
               [outlet]="outlet"
+              [state]="initialState"
               [basePath]="basePath">
               <router-outlet [name]="outlet" />
             </taon-draggable-button-panel>
@@ -146,6 +151,8 @@ export class SudoApp implements OnInit {
   theme = inject(TaonThemeService);
 
   taonAdminService = inject(TaonAdminService);
+
+  initialState = TaonDraggableButtonPanelState.FULL_SCREEN_LOCKED;
 
   dialog = inject(MatDialog);
 

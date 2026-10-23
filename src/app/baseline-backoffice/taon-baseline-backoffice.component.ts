@@ -2,7 +2,7 @@
 import { AsyncPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ENV_ANGULAR_NODE_APP_WEBSITE_TITLE } from '@taon-dev/session/src';
+
 import {
   TaonAdminLayoutComponent,
   TaonBackofficeNotificationsComponent,
@@ -26,7 +26,7 @@ import { TaonBaselineBackofficeRoutes } from './taon-baseline-backoffice.routes'
   ],
 })
 export class TaonBaselineBackofficeComponent {
-  title = ENV_ANGULAR_NODE_APP_WEBSITE_TITLE || 'Application Title';
+  title = 'Application Title';
 
   get adminRoutes() {
     return TaonBaselineBackofficeRoutes[0].children;

@@ -1,0 +1,9 @@
+msgid ""
+msgstr ""
+"Language: pl-PL\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo/taon-sudo.controller.ts:56
+msgid "Only super users can access super user stuff"
+msgstr ""

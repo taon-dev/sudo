@@ -7,17 +7,42 @@ export const TaonSudoDataBackofficeRoutes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./taon-sudo-data-backoffice.component').then(m => m.TaonSudoDataBackofficeComponent),
+      import('./taon-sudo-data-backoffice.component').then(
+        m => m.TaonSudoDataBackofficeComponent,
+      ),
 
     children: [
-      // adminLazyRoute({
-      //   path: 'dashboard',
-      //   menuItem: 'Dashboard',
-      //   icon: 'dashboard',
-      //   expandable: false,
-      //   loader: () =>
-      //     import('./anothermodule.routes').then(m => m.DashboardRoutes),
-      // }),
+      adminLazyRoute({
+        path: 'sql',
+        menuItem: 'SQL',
+        icon: 'sql',
+        expandable: false,
+        loader: () =>
+          import('./taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.routes').then(
+            m => m.TaonSudoDataSqlBackofficeRoutes,
+          ),
+      }),
+      adminLazyRoute({
+        path: 'kv',
+        menuItem: 'KV',
+        icon: 'kv',
+        expandable: false,
+        loader: () =>
+          import('./taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.routes').then(
+            m => m.TaonSudoDataKvBackofficeRoutes,
+          ),
+      }),
+
+      adminLazyRoute({
+        path: 'bucket',
+        menuItem: 'Bucket',
+        icon: 'bucket',
+        expandable: false,
+        loader: () =>
+          import('./taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.routes').then(
+            m => m.TaonSudoDataBucketBackofficeRoutes,
+          ),
+      }),
     ],
   },
 ];

@@ -49,6 +49,12 @@ import {
   TaonSessionProvider,
 } from '@taon-dev/session/src';
 import { TaonSessionButtonComponent } from '@taon-dev/session/src'; //@browser
+import { TaonSudoAbstractContext } from '@taon-dev/sudo/src';
+import {
+  TaonBaselineBackofficeOutletName,
+  TaonDraggableButtonPanelComponent,
+  TaonDraggableButtonPanelState,
+} from '@taon-dev/ui/src'; // @browser
 import { providePrimeNG } from 'primeng/config'; // @browser
 import { BehaviorSubject, map, switchMap } from 'rxjs';
 import {
@@ -71,11 +77,6 @@ import {
   ENV_ANGULAR_NODE_APP_CONFIG_GOOGLE_SECRET,
   ENV_ANGULAR_NODE_APP_CONFIG_SUPER_USERS,
 } from './lib/env/env.angular-node-app';
-import {
-  TaonBaselineBackofficeOutletName,
-  TaonDraggableButtonPanelComponent,
-  TaonDraggableButtonPanelState,
-} from '@taon-dev/ui/src'; // @browser
 // @placeholder-for-imports
 
 //#endregion
@@ -355,12 +356,13 @@ class TaonSessionProviderOverride extends TaonSessionProvider {
 }
 //#endregion
 
-//#region  cms context
+//#region  sudo context
 var SudoContext = Taon.createContext(() => ({
   ...HOST_CONFIG['SudoContext'],
   contexts: {
     TaonSessionAbstractContext,
     TaonBaseContext,
+    TaonSudoAbstractContext,
   },
   providers: {
     [ClassHelpers.getName(TaonSessionProvider)]: TaonSessionProviderOverride,

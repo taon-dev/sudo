@@ -1,4 +1,95 @@
-<router-outlet></router-outlet>
-<p>
-  {{ t.gettext('taon-sudo-data-kv-backoffice works!') }}
-</p>
+<h1>{{ t.gettext('KV data') }}</h1>
+
+<div class="selectors">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('Context') }}</mat-label>
+    <mat-select
+      [value]="selectedContext()"
+      (selectionChange)="contextChanged($event.value)">
+      @for (context of contexts(); track context) {
+        <mat-option [value]="context">{{ context }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('KV Repository') }}</mat-label>
+    <mat-select
+      [value]="selectedRepository()"
+      [disabled]="!repositories().length"
+      (selectionChange)="repositoryChanged($event.value)">
+      @for (repository of repositories(); track repository) {
+        <mat-option [value]="repository">{{ repository }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    [disabled]="loading() || !selectedRepository()"
+    (click)="startAdd()">
+    {{ t.gettext('Add') }}
+  </button>
+  <button
+    mat-button
+    type="button"
+    [disabled]="loading() || !selectedRepository()"
+    (click)="reload()">
+    {{ t.gettext('Reload') }}
+  </button>
+</div>
+
+@if (loading()) {
+  <p role="status">{{ t.gettext('Loading KV data...') }}</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+@if (editorOpen()) {
+  <section class="kv-editor">
+    <h2>{{ editing() ? t.gettext('Edit value') : t.gettext('Add value') }}</h2>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ t.gettext('Key') }}</mat-label>
+      <input
+        matInput
+        [value]="keyInput()"
+        [readonly]="editing()"
+        (input)="updateKey($event)" />
+    </mat-form-field>
+    <mat-form-field
+      appearance="outline"
+      class="value-field">
+      <mat-label>{{ t.gettext('Value (JSON)') }}</mat-label>
+      <textarea
+        matInput
+        rows="8"
+        [value]="valueInput()"
+        (input)="updateValue($event)"></textarea>
+    </mat-form-field>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      [disabled]="loading()"
+      (click)="save()">
+      {{ t.gettext('Save') }}
+    </button>
+    <button
+      mat-button
+      type="button"
+      (click)="editorOpen.set(false)">
+      {{ t.gettext('Cancel') }}
+    </button>
+  </section>
+}
+
+<taon-datatable
+  [data]="tableRows"
+  [columns]="columns"
+  [allowedColumns]="['key', 'displayValue']"
+  [hideAddButton]="true"
+  searchMode="advanced">
+</taon-datatable>

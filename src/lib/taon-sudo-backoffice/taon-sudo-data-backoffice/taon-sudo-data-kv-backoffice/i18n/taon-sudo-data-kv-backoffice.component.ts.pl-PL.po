@@ -3,3 +3,31 @@ msgstr ""
 "Language: pl-PL\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:45
+msgid "Key"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:46
+msgid "Value"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:48
+msgid "Actions"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:55
+msgid "Edit value"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:61
+msgid "Delete key"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:180
+msgid "A key is required."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:187
+msgid "Value must be valid JSON."
+msgstr ""

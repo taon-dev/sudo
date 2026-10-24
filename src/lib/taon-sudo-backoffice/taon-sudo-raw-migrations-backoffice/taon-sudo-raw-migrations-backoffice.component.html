@@ -1,4 +1,274 @@
-<router-outlet></router-outlet>
-<p>
-  {{ t.gettext('taon-sudo-raw-migrations-backoffice works!') }}
-</p>
+<main class="raw-migrations">
+  <header>
+    <h1>{{ t.gettext('Raw migrations') }}</h1>
+    <p>
+      {{
+        t.gettext(
+          'Create a staged snapshot of SQL rows and bucket objects. KV application data is not included.'
+        )
+      }}
+    </p>
+  </header>
+
+  <section class="toolbar">
+    <label>
+      {{ t.gettext('Context') }}
+      <select
+        [value]="selectedContext()"
+        [disabled]="busy()"
+        (change)="selectContext($event)">
+        @for (context of contexts(); track context) {
+          <option [value]="context">{{ context }}</option>
+        }
+      </select>
+    </label>
+  </section>
+
+  <nav
+    class="tabs"
+    aria-label="Raw migration sections">
+    <button
+      type="button"
+      [class.selected]="activeTab() === 'snapshot'"
+      [attr.aria-selected]="activeTab() === 'snapshot'"
+      (click)="selectTab('snapshot')">
+      {{ t.gettext('Snapshot') }}
+    </button>
+    <button
+      type="button"
+      [class.selected]="activeTab() === 'restore'"
+      [attr.aria-selected]="activeTab() === 'restore'"
+      (click)="selectTab('restore')">
+      {{ t.gettext('Restore') }}
+    </button>
+  </nav>
+
+  @if (busy()) {
+    <p
+      class="status"
+      role="status">
+      {{ statusMessage() }}
+    </p>
+  }
+
+  @if (activeJob(); as job) {
+    <section
+      class="job"
+      aria-live="polite">
+      <div class="job-heading">
+        <strong>{{ job.phase }}</strong>
+        @if (job.total > 0) {
+          <span>{{ job.completed }} / {{ job.total }}</span>
+        }
+      </div>
+      @if (job.total > 0) {
+        <progress
+          [value]="job.completed"
+          [max]="job.total"></progress>
+      } @else {
+        <progress></progress>
+      }
+      @if (job.operation === 'create' && job.status === 'running') {
+        <button
+          type="button"
+          class="stop"
+          (click)="stopSnapshot()">
+          {{ t.gettext('Stop after current item') }}
+        </button>
+      }
+    </section>
+  }
+
+  @if (errorMessage()) {
+    <p
+      class="error"
+      role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (statusMessage() && !busy()) {
+    <p
+      class="status"
+      role="status">
+      {{ statusMessage() }}
+    </p>
+  }
+
+  @if (activeTab() === 'snapshot') {
+    <section class="snapshot-list">
+      <div class="section-heading">
+        <div>
+          <h2>{{ t.gettext('Snapshots') }}</h2>
+          <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
+        </div>
+        <div class="snapshot-actions">
+          <button
+            type="button"
+            [disabled]="busy() || !selectedContext()"
+            (click)="openCreateDialog()">
+            {{ t.gettext('Create snapshot') }}
+          </button>
+          <label
+            class="file-button"
+            [class.disabled]="busy() || !selectedContext()">
+            {{ t.gettext('Import ZIP') }}
+            <input
+              type="file"
+              accept=".zip,application/zip"
+              [disabled]="busy() || !selectedContext()"
+              (change)="importSnapshot($event)" />
+          </label>
+        </div>
+      </div>
+      @if (snapshots().length === 0) {
+        <p>
+          {{ t.gettext('No raw migration snapshots found for this context.') }}
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t.gettext('Name') }}</th>
+              <th>{{ t.gettext('Created') }}</th>
+              <th>{{ t.gettext('Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (snapshot of snapshots(); track snapshot.id) {
+              <tr>
+                <td>
+                  <strong>{{ snapshot.name }}</strong>
+                  <small>
+                    {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
+                    {{ formatBytes(snapshot.totalBytes) }}
+                  </small>
+                </td>
+                <td>{{ snapshot.createdAt | date: 'medium' }}</td>
+                <td class="snapshot-actions">
+                  <a
+                    [href]="exportUrl(snapshot)"
+                    download>
+                    {{ t.gettext('Export ZIP') }}
+                  </a>
+                  <button
+                    type="button"
+                    class="danger"
+                    [disabled]="busy()"
+                    (click)="deleteSnapshot(snapshot)">
+                    {{ t.gettext('Delete') }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  } @else {
+    <section class="snapshot-list">
+      <h2>{{ t.gettext('Restore snapshot') }}</h2>
+      <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
+      <label class="clear-data-option">
+        <input
+          type="checkbox"
+          [checked]="clearAllData()"
+          [disabled]="busy()"
+          (change)="setClearAllData($event)" />
+        <span>
+          {{ t.gettext('Clear all data before restore') }}
+        </span>
+      </label>
+      @if (snapshots().length === 0) {
+        <p>
+          {{ t.gettext('No raw migration snapshots found for this context.') }}
+        </p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t.gettext('Name') }}</th>
+              <th>{{ t.gettext('Created') }}</th>
+              <th>{{ t.gettext('Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (snapshot of snapshots(); track snapshot.id) {
+              <tr>
+                <td>
+                  <strong>{{ snapshot.name }}</strong>
+                  <small>
+                    {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
+                    {{ formatBytes(snapshot.totalBytes) }}
+                  </small>
+                </td>
+                <td>{{ snapshot.createdAt | date: 'medium' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="restoreSnapshot(snapshot)">
+                    {{ t.gettext('Restore') }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  }
+
+  @if (createDialogOpen()) {
+    <div
+      class="dialog-backdrop"
+      role="presentation">
+      <form
+        class="create-dialog"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="t.gettext('Create snapshot')"
+        (submit)="createSnapshot($event)">
+        <h2>{{ t.gettext('Create snapshot') }}</h2>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t.gettext('Context') }}</mat-label>
+
+          <mat-select
+            [value]="createContext()"
+            (selectionChange)="createContext.set($event.value)">
+            @for (context of contexts(); track context) {
+              <mat-option [value]="context">
+                {{ context }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t.gettext('Snapshot name') }}</mat-label>
+
+          <input
+            matInput
+            type="text"
+            required
+            maxlength="120"
+            autofocus
+            [value]="snapshotName()"
+            (input)="setSnapshotName($event)" />
+        </mat-form-field>
+        <div class="dialog-actions">
+          <button
+            type="button"
+            (click)="closeCreateDialog()">
+            {{ t.gettext('Cancel') }}
+          </button>
+          <button type="submit">
+            {{ t.gettext('Create snapshot') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <router-outlet></router-outlet>
+</main>

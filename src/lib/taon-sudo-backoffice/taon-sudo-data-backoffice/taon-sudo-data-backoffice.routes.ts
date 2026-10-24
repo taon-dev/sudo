@@ -12,6 +12,11 @@ export const TaonSudoDataBackofficeRoutes: Routes = [
       ),
 
     children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'sql',
+      },
       adminLazyRoute({
         path: 'sql',
         menuItem: 'SQL',

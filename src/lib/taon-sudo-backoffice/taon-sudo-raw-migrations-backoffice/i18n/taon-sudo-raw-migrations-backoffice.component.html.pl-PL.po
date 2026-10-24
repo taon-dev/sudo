@@ -5,5 +5,93 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:3
-msgid "taon-sudo-raw-migrations-backoffice works!"
+msgid "Raw migrations"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:5
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:6
+msgid "Create a staged snapshot of SQL rows and bucket objects. KV application data is not included."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:15
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:103
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:171
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:234
+msgid "Context"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:35
+msgid "Snapshot"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:42
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:211
+msgid "Restore"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:76
+msgid "Stop after current item"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:102
+msgid "Snapshots"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:110
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:232
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:260
+msgid "Create snapshot"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:115
+msgid "Import ZIP"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:126
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:184
+msgid "No raw migration snapshots found for this context."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:132
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:190
+msgid "Name"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:133
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:191
+msgid "Created"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:134
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:192
+msgid "Actions"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:143
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:201
+msgid "files"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:152
+msgid "Export ZIP"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:159
+msgid "Delete"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:170
+msgid "Restore snapshot"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:179
+msgid "Clear all data before restore"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:244
+msgid "Snapshot name"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.html:257
+msgid "Cancel"
 msgstr ""

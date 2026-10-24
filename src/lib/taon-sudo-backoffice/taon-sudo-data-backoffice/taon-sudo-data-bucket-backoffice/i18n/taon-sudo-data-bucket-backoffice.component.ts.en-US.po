@@ -3,3 +3,35 @@ msgstr ""
 "Language: en-US\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:36
+msgid "Key"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:37
+msgid "File Name"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:39
+msgid "Content Type"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:43
+msgid "Size"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:45
+msgid "Actions"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:52
+msgid "Preview"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:58
+msgid "Download"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.ts:64
+msgid "Delete file"
+msgstr ""

@@ -46,7 +46,12 @@ import {
   DEFAULT_SESSION_EMAIL,
   DEFAULT_SESSION_PASSWORD,
   TaonSessionAbstractContext,
+  TaonSessionIdentityProvider,
   TaonSessionProvider,
+  TaonSessionUserEntity,
+  TaonSessionUserIdentityRepository,
+  TaonSessionUserRepository,
+  TaonSessionUserUtils,
 } from '@taon-dev/session/src';
 import { TaonSessionButtonComponent } from '@taon-dev/session/src'; //@browser
 import { TaonSudoAbstractContext } from '@taon-dev/sudo/src';
@@ -390,7 +395,134 @@ export const SudoStartFunction = async (
   await TaonStor.awaitAll();
   //#endregion
 
-  await SudoContext.initialize(startParams);
+  const ref = await SudoContext.initialize(startParams);
+
+  //#region @esmRemove
+
+  //#region add default email
+  //#region @backend
+  const taonSessionUserRepository = ref.getInstanceBy(
+    TaonSessionUserRepository,
+  );
+
+  const taonSessionUserIdentityRepository = ref.getInstanceBy(
+    TaonSessionUserIdentityRepository,
+  );
+
+  await (async () => {
+    const existingIdentity =
+      await taonSessionUserIdentityRepository.findPasswordIdentity(
+        DEFAULT_EMAIL,
+      );
+
+    if (!existingIdentity) {
+      const user = await taonSessionUserRepository.save(
+        new TaonSessionUserEntity().clone({
+          username: TaonSessionUserUtils.generateRandomUsername(),
+        }),
+      );
+
+      await taonSessionUserIdentityRepository.createPasswordIdentity(
+        user.id,
+        DEFAULT_EMAIL,
+        DEFAULT_PASSWORD,
+      );
+
+      await taonSessionUserIdentityRepository.createSocialIdentity(
+        user.id,
+        TaonSessionIdentityProvider.GOOGLE,
+        'idfromgoogle',
+        `fromgogle${DEFAULT_EMAIL}`,
+        true,
+      );
+    }
+  })();
+
+  await (async () => {
+    const existingIdentity =
+      await taonSessionUserIdentityRepository.findPasswordIdentity(
+        DEFAULT_EMAIL2,
+      );
+
+    if (!existingIdentity) {
+      const user = await taonSessionUserRepository.save(
+        new TaonSessionUserEntity().clone({
+          username: TaonSessionUserUtils.generateRandomUsername(),
+        }),
+      );
+
+      await taonSessionUserIdentityRepository.createPasswordIdentity(
+        user.id,
+        DEFAULT_EMAIL2,
+        DEFAULT_PASSWORD2,
+      );
+
+      await taonSessionUserIdentityRepository.createSocialIdentity(
+        user.id,
+        TaonSessionIdentityProvider.MICROSOFT,
+        'idfrommicrosoft',
+        `fromgogle${DEFAULT_EMAIL2}`,
+        true,
+      );
+    }
+  })();
+
+  await (async () => {
+    const existingIdentity =
+      await taonSessionUserIdentityRepository.findPasswordIdentity(
+        DEFAULT_EMAIL,
+      );
+
+    if (!existingIdentity) {
+      const user = await taonSessionUserRepository.save(
+        new TaonSessionUserEntity().clone({
+          username: TaonSessionUserUtils.generateRandomUsername(),
+        }),
+      );
+
+      await taonSessionUserIdentityRepository.createPasswordIdentity(
+        user.id,
+        DEFAULT_EMAIL,
+        DEFAULT_PASSWORD,
+      );
+
+      await taonSessionUserIdentityRepository.createSocialIdentity(
+        user.id,
+        TaonSessionIdentityProvider.GOOGLE,
+        'idfromgoogle',
+        `fromgogle${DEFAULT_EMAIL}`,
+        true,
+      );
+    }
+  })();
+
+  await (async () => {
+    const existingIdentity =
+      await taonSessionUserIdentityRepository.findPasswordIdentity(
+        DEFAULT_EMAIL3,
+      );
+
+    if (!existingIdentity) {
+      const user = await taonSessionUserRepository.save(
+        new TaonSessionUserEntity().clone({
+          username: TaonSessionUserUtils.generateRandomUsername(),
+        }),
+      );
+
+      await taonSessionUserIdentityRepository.createSocialIdentity(
+        user.id,
+        TaonSessionIdentityProvider.GOOGLE,
+        'idfromgoogle2',
+        `fromgogle${DEFAULT_EMAIL3}`,
+        true,
+      );
+    }
+  })();
+
+  //#endregion
+  //#endregion
+
+  //#endregion
 
   //#region @backend
   //#region @esmRemove

@@ -1,0 +1,21 @@
+msgid ""
+msgstr ""
+"Language: en-US\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-edit-add-row.component.html:5
+msgid "Add row"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-edit-add-row.component.html:5
+msgid "Edit row"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-edit-add-row.component.html:35
+msgid "Cancel"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-edit-add-row.component.html:41
+msgid "Save"
+msgstr ""

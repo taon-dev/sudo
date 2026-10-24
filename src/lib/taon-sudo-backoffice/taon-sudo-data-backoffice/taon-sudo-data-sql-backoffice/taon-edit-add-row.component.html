@@ -1,0 +1,44 @@
+<h2
+  mat-dialog-title
+  cdkDrag
+  cdkDragRootElement=".cdk-overlay-pane">
+  {{ data.mode === 'add' ? t.gettext('Add row') : t.gettext('Edit row') }}
+</h2>
+<form
+  [formGroup]="form"
+  (ngSubmit)="save()">
+  <mat-dialog-content>
+    @for (column of editableColumns; track column.propertyName) {
+      @if (isBoolean(column)) {
+        <mat-checkbox [formControlName]="column.propertyName">
+          {{ column.name }}
+        </mat-checkbox>
+      } @else {
+        <mat-form-field
+          appearance="outline"
+          class="row-field">
+          <mat-label>{{ column.name }}</mat-label>
+          <input
+            matInput
+            [type]="inputType(column)"
+            [formControlName]="column.propertyName"
+            [required]="!column.nullable && !column.generated" />
+        </mat-form-field>
+      }
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      (click)="cancel()">
+      {{ t.gettext('Cancel') }}
+    </button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit">
+      {{ t.gettext('Save') }}
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -1,4 +1,68 @@
-<router-outlet></router-outlet>
-<p>
-  {{ t.gettext('taon-sudo-data-sql-backoffice works!') }}
-</p>
+<h1>{{ t.gettext('SQL data') }}</h1>
+
+<div class="selectors">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('Context') }}</mat-label>
+    <mat-select
+      [value]="selectedContext()"
+      (selectionChange)="contextChanged($event.value)">
+      @for (context of contexts(); track context) {
+        <mat-option [value]="context">{{ context }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('Entity') }}</mat-label>
+    <mat-select
+      [value]="selectedEntity()"
+      [disabled]="!entities().length"
+      (selectionChange)="entityChanged($event.value)">
+      @for (entity of entities(); track entity.name) {
+        <mat-option [value]="entity.name">
+          {{ entity.name === entity.tableName ? entity.name : (entity.name + ' (' + entity.tableName + ')' ) }}
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    [disabled]="loading() || !selectedEntity()"
+    (click)="addRow()">
+    {{ t.gettext('Add Row') }}
+  </button>
+  <button
+    mat-button
+    type="button"
+    [disabled]="loading() || !selectedEntity()"
+    (click)="loadRows()">
+    {{ t.gettext('Reload') }}
+  </button>
+</div>
+
+@if (loading()) {
+  <p role="status">{{ t.gettext('Loading SQL data...') }}</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+<taon-datatable
+  [data]="rows()"
+  [columns]="columns()"
+  [allowedColumns]="allowedColumns"
+  [hideAddButton]="true"
+  searchMode="advanced">
+</taon-datatable>
+
+<mat-paginator
+  [length]="totalCount()"
+  [pageIndex]="page()"
+  [pageSize]="pageSize()"
+  [pageSizeOptions]="[10, 25, 50, 100]"
+  [disabled]="loading()"
+  (page)="pageChanged($event)">
+</mat-paginator>

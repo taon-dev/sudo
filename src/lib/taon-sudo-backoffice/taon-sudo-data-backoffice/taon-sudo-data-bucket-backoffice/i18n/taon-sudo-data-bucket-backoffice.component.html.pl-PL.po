@@ -4,6 +4,26 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:3
-msgid "taon-sudo-data-bucket-backoffice works!"
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:1
+msgid "Bucket data"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:5
+msgid "Context"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:16
+msgid "Storage Controller"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:28
+msgid "Upload / Replace"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:39
+msgid "Reload"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:44
+msgid "Loading bucket files..."
 msgstr ""

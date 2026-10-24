@@ -1,3 +1,172 @@
 :host {
   display: block;
 }
+
+.raw-migrations {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+header h1,
+header p,
+h2 {
+  margin: 0;
+}
+
+.toolbar,
+.snapshot,
+.snapshot-actions,
+.job-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.toolbar {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1rem;
+}
+
+.tabs {
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tabs button {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.tabs button.selected {
+  background: #eee;
+  font-weight: 600;
+}
+
+.toolbar label {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.clear-data-option {
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.clear-data-option input {
+  margin: 0;
+}
+
+button,
+.file-button {
+  border: 1px solid #777;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0.45rem 0.7rem;
+}
+
+button:disabled,
+.file-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.file-button input {
+  display: none;
+}
+
+.job {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.9rem;
+}
+
+.job progress {
+  display: block;
+  margin: 0.6rem 0;
+  width: 100%;
+}
+
+.snapshot-actions a {
+  white-space: nowrap;
+}
+
+.section-heading,
+.snapshot-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.section-heading {
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.65rem;
+  text-align: left;
+}
+
+td strong,
+td small {
+  display: block;
+}
+
+.dialog-backdrop {
+  align-items: center;
+  background: rgb(0 0 0 / 45%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 1000;
+}
+
+.create-dialog {
+  background: white;
+  border-radius: 6px;
+  display: grid;
+  gap: 1rem;
+  max-width: 28rem;
+  padding: 1.25rem;
+  width: 100%;
+}
+
+.create-dialog label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.danger {
+  color: #a40000;
+}
+
+.stop,
+.error {
+  color: #a40000;
+}
+
+.status {
+  color: #333;
+}

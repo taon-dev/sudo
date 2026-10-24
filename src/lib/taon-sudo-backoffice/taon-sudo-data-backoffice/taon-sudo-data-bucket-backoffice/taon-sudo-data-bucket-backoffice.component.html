@@ -1,4 +1,56 @@
-<router-outlet></router-outlet>
-<p>
-  {{ t.gettext('taon-sudo-data-bucket-backoffice works!') }}
-</p>
+<h1>{{ t.gettext('Bucket data') }}</h1>
+
+<div class="selectors">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('Context') }}</mat-label>
+    <mat-select
+      [value]="selectedContext()"
+      (selectionChange)="contextChanged($event.value)">
+      @for (context of contexts(); track context) {
+        <mat-option [value]="context">{{ context }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ t.gettext('Storage Controller') }}</mat-label>
+    <mat-select
+      [value]="selectedController()"
+      [disabled]="!storageControllers().length"
+      (selectionChange)="controllerChanged($event.value)">
+      @for (controller of storageControllers(); track controller) {
+        <mat-option [value]="controller">{{ controller }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <label class="upload-control">
+    <span>{{ t.gettext('Upload / Replace') }}</span>
+    <input
+      type="file"
+      [disabled]="loading() || !selectedController()"
+      (change)="upload($event)" />
+  </label>
+  <button
+    mat-button
+    type="button"
+    [disabled]="loading() || !selectedController()"
+    (click)="reload()">
+    {{ t.gettext('Reload') }}
+  </button>
+</div>
+
+@if (loading()) {
+  <p role="status">{{ t.gettext('Loading bucket files...') }}</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+<taon-datatable
+  [data]="files()"
+  [columns]="columns"
+  [allowedColumns]="['key', 'fileName', 'contentType', 'size']"
+  [hideAddButton]="true"
+  searchMode="advanced">
+</taon-datatable>

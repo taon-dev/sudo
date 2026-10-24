@@ -4,6 +4,26 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:3
-msgid "taon-sudo-data-sql-backoffice works!"
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:1
+msgid "SQL data"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:5
+msgid "Context"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:16
+msgid "Entity"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:35
+msgid "Add Row"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:42
+msgid "Reload"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:47
+msgid "Loading SQL data..."
 msgstr ""

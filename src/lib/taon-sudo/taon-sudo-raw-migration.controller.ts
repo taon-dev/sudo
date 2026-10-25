@@ -1,6 +1,10 @@
 //#region imports
 import { Translation } from '@taon-dev/i18n/src';
-import { TaonAuthContextRepository } from '@taon-dev/session/src';
+import {
+  TaonAuthContextRepository,
+  TaonSessionController,
+  TaonSessionRepository,
+} from '@taon-dev/session/src';
 import { FetchResponseType } from 'ng2-rest/src';
 import {
   ContextsEndpointStorage,
@@ -50,6 +54,10 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     TaonAuthContextRepository,
   );
 
+  private readonly taonSessionRepository = this.injectCustomRepo(
+    TaonSessionRepository,
+  );
+
   private readonly jobs = new Map<string, ActiveMigrationJob>();
 
   private contexts: EndpointContext[] = [];
@@ -64,19 +72,25 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   //#endregion
 
   //#region methods / before each request
-  protected async beforeEachRequest({
-    req,
-  }: Models.TaonCtrlBeforeEachRequestParams<TaonSudoRawMigrationController>): Promise<void> {
+  protected async beforeEachRequest(
+    data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoRawMigrationController>,
+  ): Promise<void> {
+    await this.taonSessionRepository.throwIfNotAuthenticated(data);
+    const { req } = data || {};
     const context = await this.authRepository.getContext(
       req.userId,
       req.sessionId,
     );
+    // console.log({ userId: req.userId, sessionId: req.sessionId });
+    // console.log('context raw migraiton', context);
     if (context.isSuperUser || context.isLocalhostBackend) {
       // OK for super user
     } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),
-        message: t.gettext('[@taon-dev/sudo] Only super users can access raw migrations.'),
+        message: t.gettext(
+          '[@taon-dev/sudo] Only super users can access raw migrations.',
+        ),
       });
     }
   }

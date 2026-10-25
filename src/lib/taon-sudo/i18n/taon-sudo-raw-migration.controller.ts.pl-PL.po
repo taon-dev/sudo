@@ -4,6 +4,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo/taon-sudo-raw-migration.controller.ts:79
-msgid "Only super users can access raw migrations."
+#: src/lib/taon-sudo/taon-sudo-raw-migration.controller.ts:91
+msgid "[@taon-dev/sudo] Only super users can access raw migrations."
 msgstr ""

@@ -4,6 +4,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo/taon-sudo.controller.ts:92
-msgid "Only super users can access super user stuff"
+#: src/lib/taon-sudo/taon-sudo.controller.ts:101
+msgid "[@taon-dev/sudo] Only super users can access super user stuff"
 msgstr ""

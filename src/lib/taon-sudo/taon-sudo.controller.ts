@@ -1,6 +1,9 @@
 //#region imports
 import { Translation } from '@taon-dev/i18n/src';
-import { TaonAuthContextRepository } from '@taon-dev/session/src';
+import {
+  TaonAuthContextRepository,
+  TaonSessionRepository,
+} from '@taon-dev/session/src';
 import {
   Taon,
   ClassHelpers,
@@ -49,6 +52,10 @@ export class TaonSudoController extends TaonBaseController<
     TaonAuthContextRepository,
   );
 
+  protected readonly taonSessionRepository = this.injectCustomRepo(
+    TaonSessionRepository,
+  );
+
   get allContextsName(): string[] {
     return this.allContexts?.map(c => c.contextName) || [];
   }
@@ -75,21 +82,25 @@ export class TaonSudoController extends TaonBaseController<
   //#endregion
 
   //#region authenticaiton
-  protected async beforeEachRequest({
-    req,
-    res,
-  }: Models.TaonCtrlBeforeEachRequestParams<TaonSudoController>): Promise<void> {
+  protected async beforeEachRequest(
+    data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoController>,
+  ): Promise<void> {
+    await this.taonSessionRepository.throwIfNotAuthenticated(data);
+    const { req } = data || {};
     const context = await this.taonAuthContextRepository.getContext(
       req.userId,
       req.sessionId,
     );
-
+    // console.log({ userId: req.userId, sessionId: req.sessionId });
+    // console.log('context sudo data', context);
     if (context.isSuperUser || context.isLocalhostBackend) {
       /// OK for super user
     } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),
-        message: t.gettext('[@taon-dev/sudo] Only super users can access super user stuff'),
+        message: t.gettext(
+          '[@taon-dev/sudo] Only super users can access super user stuff',
+        ),
       });
     }
   }

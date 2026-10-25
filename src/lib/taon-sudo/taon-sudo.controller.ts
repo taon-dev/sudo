@@ -28,6 +28,7 @@ import { FetchResponseType } from 'ng2-rest/src';
 
 import { TaonSudoRepository } from './taon-sudo.repository';
 import { TaonSudoUtils } from './taon-sudo.utils';
+import { TaonSudoModels } from './taon-sudo.models';
 //#endregion
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
@@ -88,7 +89,7 @@ export class TaonSudoController extends TaonBaseController<
     } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),
-        message: t.gettext('Only super users can access super user stuff'),
+        message: t.gettext('[@taon-dev/sudo] Only super users can access super user stuff'),
       });
     }
   }
@@ -106,6 +107,23 @@ export class TaonSudoController extends TaonBaseController<
       });
     }
     return context!;
+  }
+  //#endregion
+
+  //#region methods / get context
+  @GET()
+  getAllContextsData(): Taon.Response<TaonSudoModels.BasicContextData[]> {
+    //#region @websqlFunc
+    return async (req, res) => {
+      return this.allContexts.map(c => {
+        return {
+          backendUrlOrigin: c.uriOrigin!,
+          frontendUriOrigin: c.frontendHostUri.origin,
+          contextName: c.contextName,
+        };
+      });
+    };
+    //#endregion
   }
   //#endregion
 

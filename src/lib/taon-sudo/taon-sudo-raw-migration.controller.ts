@@ -76,7 +76,7 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),
-        message: t.gettext('Only super users can access raw migrations.'),
+        message: t.gettext('[@taon-dev/sudo] Only super users can access raw migrations.'),
       });
     }
   }

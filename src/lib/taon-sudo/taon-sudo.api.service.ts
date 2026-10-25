@@ -1,8 +1,10 @@
 //#region imports
 import { Injectable } from '@angular/core';
+import { map, Observable } from 'rxjs';
 import { Taon, TaonBaseAngularService, TaonStorageObject } from 'taon/src';
 
 import { TaonSudoController } from './taon-sudo.controller';
+import { TaonSudoModels } from './taon-sudo.models';
 //#endregion
 
 export interface TaonSudoSqlColumn {
@@ -30,27 +32,34 @@ export class TaonSudoApiService extends TaonBaseAngularService {
     return this.taonSudoController;
   }
 
+  //#region methods / get contexts
   getContexts(): Promise<string[]> {
     return this.taonSudoController
       .getContexts()
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get sql contexts
   getSqlContexts(): Promise<string[]> {
     return this.taonSudoController
       .getSqlContexts()
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get sql entities
   getSqlEntities(contextName: string): Promise<TaonSudoSqlEntity[]> {
     return this.taonSudoController
       .getSqlEntities(contextName)
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get sql rows
   getSqlRows(
     contextName: string,
     entityName: string,
@@ -72,7 +81,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / add sql row
   addSqlRow(
     contextName: string,
     entityName: string,
@@ -83,7 +94,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / edit sql row
   editSqlRow(
     contextName: string,
     entityName: string,
@@ -95,7 +108,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / delete sql row
   deleteSqlRow(
     contextName: string,
     entityName: string,
@@ -106,14 +121,18 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get kv repositories
   getKvRepositories(contextName: string): Promise<string[]> {
     return this.taonSudoController
       .getKvRepositories(contextName)
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get kv data
   getKvData(
     contextName: string,
     repositoryName: string,
@@ -123,7 +142,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / set kv value
   setKvValue(
     contextName: string,
     repositoryName: string,
@@ -135,7 +156,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / delete kv value
   deleteKvValue(
     contextName: string,
     repositoryName: string,
@@ -146,14 +169,18 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get storage controllers
   getStorageControllers(contextName: string): Promise<string[]> {
     return this.taonSudoController
       .getStorageControllers(contextName)
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get bucket files
   getBucketFiles(
     contextName: string,
     controllerName: string,
@@ -163,7 +190,18 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get bucket files
+  getAllContextsData(): Observable<TaonSudoModels.BasicContextData[]> {
+    return this.taonSudoController
+      .getAllContextsData()
+      .request()
+      .observable.pipe(map(c => c.body.json));
+  }
+  //#endregion
+
+  //#region methods / delete bucket file
   deleteBucketFile(
     contextName: string,
     controllerName: string,
@@ -174,7 +212,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / upload bucket file
   uploadBucketFile(
     contextName: string,
     controllerName: string,
@@ -187,7 +227,9 @@ export class TaonSudoApiService extends TaonBaseAngularService {
       .request()
       .then(response => response.body.json);
   }
+  //#endregion
 
+  //#region methods / get bucket file url
   getBucketFileUrl(
     contextName: string,
     controllerName: string,
@@ -206,4 +248,5 @@ export class TaonSudoApiService extends TaonBaseAngularService {
     url.searchParams.set('download', String(download));
     return url.href;
   }
+  //#endregion
 }

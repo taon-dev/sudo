@@ -12,6 +12,7 @@ import {
   TaonAdminService,
 } from 'taon/src';
 import { Helpers } from 'tnp-core/src';
+import { TaonSudoApiService } from '../taon-sudo/taon-sudo.api.service';
 //#endregion
 
 @Component({
@@ -27,8 +28,13 @@ import { Helpers } from 'tnp-core/src';
     FormsModule,
     ReactiveFormsModule,
   ],
+  providers: [TaonSudoApiService],
 })
 export class TaonSudoBackofficeComponent {
+  taonSudoApiService = inject(TaonSudoApiService);
+
+  contextsData$ = this.taonSudoApiService.getAllContextsData();
+
   public readonly isWebSQLMode: boolean = Helpers.getIsWebSQL();
 
   componentLoaded = false;

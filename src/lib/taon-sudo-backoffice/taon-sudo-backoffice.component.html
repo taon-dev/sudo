@@ -1,9 +1,9 @@
 @if (!componentLoaded) {
   <code class="pb-2">
-    Welcome to SUDO backoffice. You have full raw access to the whole system
-    and database here. Be careful!
+    Welcome to SUDO backoffice. You have full raw access to the whole system and
+    database here. Be careful!
   </code>
-  <br>
+  <br />
   <mat-card class="mt-4">
     <mat-card-header>
       <mat-card-subtitle>WEBSQL MODE</mat-card-subtitle>
@@ -18,6 +18,36 @@
         ">
         Don't remove data when re-loading
       </mat-checkbox>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="mt-4">
+    <mat-card-header>
+      <mat-card-subtitle>Contexts Basic Data</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (contextsData$ | async; as contextsData) {
+        <table>
+          <thead>
+            <tr>
+              <th>Context</th>
+              <th>Frontend</th>
+              <th>Backend</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (context of contextsData; track context.contextName) {
+              <tr>
+                <td>{{ context.contextName }}</td>
+                <td>{{ context.frontendUriOrigin }}</td>
+                <td>{{ context.backendUrlOrigin }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
     </mat-card-content>
   </mat-card>
 }

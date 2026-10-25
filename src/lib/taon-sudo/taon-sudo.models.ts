@@ -1,6 +1,7 @@
 export namespace TaonSudoModels {
-  export enum ExmapleTaonSudoState {
-    Active = 'active',
-    Inactive = 'inactive',
+  export interface BasicContextData {
+    contextName: string;
+    frontendUriOrigin: string;
+    backendUrlOrigin: string;
   }
 }

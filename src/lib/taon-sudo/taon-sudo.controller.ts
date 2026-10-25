@@ -84,7 +84,7 @@ export class TaonSudoController extends TaonBaseController<
     );
 
     if (context.isSuperUser || context.isLocalhostBackend) {
-      // OK
+      /// OK for super user
     } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),

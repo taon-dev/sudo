@@ -71,7 +71,9 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
       req.userId,
       req.sessionId,
     );
-    if (!context.isSuperUser && !context.isLocalhostBackend) {
+    if (context.isSuperUser || context.isLocalhostBackend) {
+      // OK for super user
+    } else {
       Taon.error({
         status: getStatusCode(HttpStatusEnum.FORBIDDEN),
         message: t.gettext('Only super users can access raw migrations.'),

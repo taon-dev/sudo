@@ -1654,17 +1654,20 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       >();
 
       for (const entity of orderedEntities) {
-        const classFn = context.getClassFunByClassName(entity.name);
-        if (!classFn) {
-          continue;
-          // throw new Error(`SQL entity "${entity.name}" is unavailable.`);
-        }
-        repositoryByName.set(
+        // const classFn = context.getClassFunByClassName(entity.name);
+        // if (!classFn) {
+        //   continue;
+        //   // throw new Error(`SQL entity "${entity.name}" is unavailable.`);
+        // }
+        const repoForEntity = queryRunner.manager.getRepository(
           entity.name,
-          queryRunner.manager.getRepository(entity.name) as Repository<
-            Record<string, unknown>
-          >,
-        );
+        ) as Repository<Record<string, unknown>>;
+
+        if(!repoForEntity) {
+          throw `[restoreSnapshotBackend] no repo for entity "${entity.name}"`
+        }
+
+        repositoryByName.set(entity.name, repoForEntity);
       }
 
       if (clearAllData) {

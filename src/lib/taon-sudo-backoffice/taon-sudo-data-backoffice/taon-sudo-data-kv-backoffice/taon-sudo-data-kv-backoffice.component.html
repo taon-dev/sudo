@@ -1,7 +1,9 @@
 <h1 class="mb-2">{{ t.gettext('KV data') }}</h1>
 
 <div class="selectors pb-4">
-  <mat-form-field appearance="outline" class="w-full">
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
     <mat-label>{{ t.gettext('Context') }}</mat-label>
     <mat-select
       [value]="selectedContext()"
@@ -12,8 +14,14 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" class="w-full">
-    <mat-label>{{ t.gettext('KV Repository') }}</mat-label>
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
+    <mat-label>{{
+      t.gettext('KV Repositories (found [[ length ]])', {
+        length: repositories()?.length || 0,
+      })
+    }}</mat-label>
     <mat-select
       [value]="selectedRepository()"
       [disabled]="!repositories().length"

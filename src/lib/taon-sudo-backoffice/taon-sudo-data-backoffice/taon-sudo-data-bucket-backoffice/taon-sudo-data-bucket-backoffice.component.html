@@ -17,7 +17,11 @@
   <mat-form-field
     appearance="outline"
     class="w-full">
-    <mat-label>{{ t.gettext('Storage Controller') }}</mat-label>
+    <mat-label>{{
+      t.gettext('Storage Controllers (found [[ length ]])', {
+        length: storageControllers()?.length || 0,
+      })
+    }}</mat-label>
     <mat-select
       [value]="selectedController()"
       [disabled]="!storageControllers().length"

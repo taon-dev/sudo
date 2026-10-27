@@ -8,22 +8,23 @@ msgstr ""
 msgid "SQL data"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:5
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:7
 msgid "Context"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:16
-msgid "Entity"
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:20
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:21
+msgid "Entities (found [[ length ]])"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:35
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:46
 msgid "Add Row"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:42
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:53
 msgid "Reload"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:47
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:58
 msgid "Loading SQL data..."
 msgstr ""

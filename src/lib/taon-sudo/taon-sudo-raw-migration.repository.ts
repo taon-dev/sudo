@@ -39,6 +39,13 @@ import { TaonSudoSnapshotEntity } from './taon-sudo-snapshot.entity';
 import { TaonSudoUtils } from './taon-sudo.utils';
 //#endregion
 
+declare const FixedLengthStream: {
+  new (expectedLength: number | bigint): {
+    readable: ReadableStream<Uint8Array>;
+    writable: WritableStream<Uint8Array>;
+  };
+};
+
 const RAW_MIGRATION_ROOT = 'TaonSudoRawMigrations';
 const SNAPSHOT_FORMAT = 'taon-sudo-raw-migration';
 const ROW_BATCH_SIZE = 250;
@@ -255,6 +262,8 @@ class RawMigrationCancelledError extends Error {
   className: 'TaonSudoRawMigrationRepository',
 })
 export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
+  debugMode = false;
+
   //#region methods / list snapshots
   listSnapshots(
     context: EndpointContext,
@@ -788,56 +797,123 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       ? (GlobalStorage.get('TAON_TEMP_STORAGE') as R2Bucket | undefined)
       : undefined;
     let operationError: unknown;
+
     if (this.isR2Runtime() && !temporaryBucket) {
       throw new Error(
         'Taon temporary R2 storage is not configured for ZIP import.',
       );
     }
 
+    this.debugMode &&
+      console.log('IMPORT 1 - start', {
+        fileName: file.fileName,
+        tempKeyOrPath: file.tempKeyOrPath,
+        mimeType: file.mimeType,
+        runtime: this.isR2Runtime() ? 'r2' : 'local',
+      });
+
     try {
       let reader: Reader<undefined>;
+
       if (this.isR2Runtime()) {
         const info = await temporaryBucket!.head(file.tempKeyOrPath);
+
+        this.debugMode &&
+          console.log('IMPORT 2 - head', {
+            key: file.tempKeyOrPath,
+            size: info?.size,
+          });
+
         if (!info) {
           throw new Error('Uploaded raw migration ZIP was not found.');
         }
+
         reader = new R2ZipRangeReader(
           temporaryBucket!,
           file.tempKeyOrPath,
           info.size,
         );
+
+        this.debugMode && console.log('IMPORT 3 - before ZipReader');
       } else {
         const info = await fse.stat(file.tempKeyOrPath);
+
+        this.debugMode &&
+          console.log('IMPORT 2 - local file', {
+            path: file.tempKeyOrPath,
+            size: info.size,
+          });
+
         // @ts-ignore
         fileHandle = await open(file.tempKeyOrPath, 'r');
+
         reader = new LocalZipRangeReader(fileHandle, info.size);
       }
 
-      zipReader = new ZipReader(reader, { useWebWorkers: false });
+      zipReader = new ZipReader(reader, {
+        useWebWorkers: false,
+      });
+
+      this.debugMode && console.log('IMPORT 4 - before getEntries');
+
       const entries = await zipReader.getEntries();
+
+      this.debugMode &&
+        console.log('IMPORT 5 - entries', {
+          count: entries.length,
+          entries: entries.map(entry => ({
+            filename: entry.filename,
+            directory: entry.directory,
+            compressedSize: entry.compressedSize,
+            uncompressedSize: entry.uncompressedSize,
+          })),
+        });
+
       const manifestEntry = entries.find(
         (entry): entry is FileEntry =>
           !entry.directory && entry.filename === 'manifest.json',
       );
+
       if (!manifestEntry || manifestEntry.uncompressedSize > 10 * 1024 * 1024) {
         throw new Error('ZIP does not contain a valid raw migration manifest.');
       }
+
+      this.debugMode &&
+        console.log('IMPORT 5.1 - reading manifest', {
+          compressedSize: manifestEntry.compressedSize,
+          uncompressedSize: manifestEntry.uncompressedSize,
+        });
+
       const manifestContent = await manifestEntry.getData(new TextWriter());
+
       const manifest = this.parseManifest(manifestContent, 'manifest.json');
+
       this.assertManifest(manifest);
 
+      this.debugMode &&
+        console.log('IMPORT 5.2 - manifest parsed', {
+          totalBytes: manifest.totalBytes,
+          totalFiles: manifest.totalFiles,
+          sqlEntities: manifest.sqlEntities.length,
+          bucketControllers: manifest.bucketControllers.length,
+        });
+
       const expectedFiles = new Set<string>(['manifest.json']);
+
       for (const entity of manifest.sqlEntities) {
         expectedFiles.add(entity.file);
       }
+
       for (const controller of manifest.bucketControllers) {
         for (const bucketFile of controller.files) {
           expectedFiles.add(bucketFile.file);
         }
       }
+
       const archiveFiles = entries.filter(
         (entry): entry is FileEntry => !entry.directory,
       );
+
       if (
         archiveFiles.length !== entries.length ||
         archiveFiles.length !== expectedFiles.size ||
@@ -849,19 +925,32 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           'ZIP contents do not match the raw migration manifest.',
         );
       }
+
       const dataFiles = archiveFiles.filter(
         entry => entry.filename !== 'manifest.json',
       );
+
       const importedBytes = dataFiles.reduce(
         (total, entry) => total + entry.uncompressedSize,
         0,
       );
+
       const expectedDataFiles =
         manifest.sqlEntities.length +
         manifest.bucketControllers.reduce(
           (total, controller) => total + controller.files.length,
           0,
         );
+
+      this.debugMode &&
+        console.log('IMPORT 5.3 - totals', {
+          importedBytes,
+          manifestTotalBytes: manifest.totalBytes,
+          dataFiles: dataFiles.length,
+          expectedDataFiles,
+          manifestTotalFiles: manifest.totalFiles,
+        });
+
       if (
         !Number.isSafeInteger(importedBytes) ||
         importedBytes !== manifest.totalBytes ||
@@ -876,20 +965,60 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       const id = crypto.randomUUID();
       const stageId = `staging-${id}`;
       const stagePrefix = this.snapshotPrefix(context, stageId);
+
       const entryByName = new Map(
         archiveFiles.map(entry => [entry.filename, entry]),
       );
+
+      this.debugMode &&
+        console.log('IMPORT 5.4 - staging', {
+          id,
+          stageId,
+          stagePrefix,
+        });
+
       try {
         for (const entity of manifest.sqlEntities) {
-          await this.writeZipEntry(
-            context,
-            stagePrefix + entity.file,
-            entryByName.get(entity.file)!,
-          );
+          const entry = entryByName.get(entity.file)!;
+
+          this.debugMode &&
+            console.log('IMPORT 6 - before writeZipEntry', {
+              filename: entity.file,
+              destinationKey: stagePrefix + entity.file,
+              compressedSize: entry.compressedSize,
+              uncompressedSize: entry.uncompressedSize,
+            });
+
+          const startedAt = Date.now();
+
+          try {
+            await this.writeZipEntry(context, stagePrefix + entity.file, entry);
+          } catch (error) {
+            this.debugMode &&
+              console.error('IMPORT 6 ERROR - SQL writeZipEntry failed', {
+                filename: entity.file,
+                compressedSize: entry.compressedSize,
+                uncompressedSize: entry.uncompressedSize,
+                durationMs: Date.now() - startedAt,
+                error,
+              });
+
+            throw error;
+          }
+
+          this.debugMode &&
+            console.log('IMPORT 7 - after writeZipEntry', {
+              filename: entity.file,
+              durationMs: Date.now() - startedAt,
+            });
         }
+
+        this.debugMode && console.log('IMPORT 7.1 - SQL entries finished');
+
         for (const controller of manifest.bucketControllers) {
           for (const bucketFile of controller.files) {
             const archiveEntry = entryByName.get(bucketFile.file);
+
             if (
               !archiveEntry ||
               archiveEntry.uncompressedSize !== bucketFile.size
@@ -898,13 +1027,49 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
                 `ZIP entry "${bucketFile.file}" has an unexpected size.`,
               );
             }
-            await this.writeZipEntry(
-              context,
-              stagePrefix + bucketFile.file,
-              archiveEntry,
-            );
+
+            this.debugMode &&
+              console.log('IMPORT 7.2 - before bucket writeZipEntry', {
+                filename: bucketFile.file,
+                destinationKey: stagePrefix + bucketFile.file,
+                compressedSize: archiveEntry.compressedSize,
+                uncompressedSize: archiveEntry.uncompressedSize,
+              });
+
+            const startedAt = Date.now();
+
+            try {
+              await this.writeZipEntry(
+                context,
+                stagePrefix + bucketFile.file,
+                archiveEntry,
+              );
+            } catch (error) {
+              this.debugMode &&
+                console.error(
+                  'IMPORT 7.2 ERROR - bucket writeZipEntry failed',
+                  {
+                    filename: bucketFile.file,
+                    compressedSize: archiveEntry.compressedSize,
+                    uncompressedSize: archiveEntry.uncompressedSize,
+                    durationMs: Date.now() - startedAt,
+                    error,
+                  },
+                );
+
+              throw error;
+            }
+
+            this.debugMode &&
+              console.log('IMPORT 7.3 - after bucket writeZipEntry', {
+                filename: bucketFile.file,
+                durationMs: Date.now() - startedAt,
+              });
           }
         }
+
+        this.debugMode && console.log('IMPORT 8 - after bucketControllers');
+
         const importedManifest: TaonSudoRawMigrationManifest = {
           ...manifest,
           version: 2,
@@ -913,6 +1078,9 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           name: snapshotName,
           createdAt: new Date().toISOString(),
         };
+
+        this.debugMode && console.log('IMPORT 9 - writing imported manifest');
+
         await this.writeObject(
           context,
           stagePrefix + 'manifest.json',
@@ -924,7 +1092,13 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
             );
           },
         );
+
+        this.debugMode && console.log('IMPORT 10 - committing stage');
+
         await this.commitStage(context, stageId, id);
+
+        this.debugMode && console.log('IMPORT 11 - stage committed');
+
         try {
           await this.storeSnapshotMetadata(context, {
             snapshotId: id,
@@ -934,26 +1108,50 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
             totalBytes: importedManifest.totalBytes,
             totalFiles: importedManifest.totalFiles,
           });
+
+          this.debugMode && console.log('IMPORT 12 - metadata stored');
         } catch (error) {
+          this.debugMode &&
+            console.error('IMPORT 12 ERROR - metadata failed', error);
+
           const cleanupErrors: unknown[] = [];
+
           try {
             await this.deletePrefix(context, this.snapshotPrefix(context, id));
           } catch (cleanupError) {
+            this.debugMode &&
+              console.error('IMPORT 12 cleanup snapshot failed', cleanupError);
+
             cleanupErrors.push(cleanupError);
           }
+
           try {
             await this.deleteSnapshotMetadata(context, id);
           } catch (cleanupError) {
+            this.debugMode &&
+              console.error('IMPORT 12 cleanup metadata failed', cleanupError);
+
             cleanupErrors.push(cleanupError);
           }
+
           if (cleanupErrors.length) {
             throw new AggregateError(
               [error, ...cleanupErrors],
               'Imported snapshot metadata could not be saved and cleanup was incomplete.',
             );
           }
+
           throw error;
         }
+
+        this.debugMode &&
+          console.log('IMPORT 13 - SUCCESS', {
+            id,
+            name: snapshotName,
+            totalBytes: importedManifest.totalBytes,
+            totalFiles: importedManifest.totalFiles,
+          });
+
         return {
           id,
           contextName: context.contextName,
@@ -963,53 +1161,118 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           totalFiles: importedManifest.totalFiles,
         };
       } catch (error) {
+        this.debugMode && console.error('IMPORT STAGING ERROR', error);
+
         try {
+          this.debugMode &&
+            console.log('IMPORT STAGING - deleting stage', stagePrefix);
+
           await this.deletePrefix(context, stagePrefix);
+
+          this.debugMode && console.log('IMPORT STAGING - stage deleted');
         } catch (cleanupError) {
+          this.debugMode &&
+            console.error('IMPORT STAGING CLEANUP ERROR', cleanupError);
+
           throw new AggregateError(
             [error, cleanupError],
             'Raw migration ZIP import failed and staging cleanup also failed.',
           );
         }
+
         throw error;
       }
     } catch (error) {
       operationError = error;
+
+      this.debugMode && console.error('IMPORT MAIN ERROR', error);
+
+      if (error instanceof AggregateError) {
+        console.error('IMPORT MAIN ERROR - AggregateError', error.errors);
+      }
+
       throw error;
     } finally {
+      this.debugMode && console.log('IMPORT FINALLY - starting cleanup');
+
       const cleanupErrors: unknown[] = [];
+
       try {
         await zipReader?.close();
+
+        this.debugMode && console.log('IMPORT FINALLY - zipReader closed');
       } catch (error) {
+        this.debugMode &&
+          console.error('IMPORT FINALLY - zipReader close failed', error);
+
         cleanupErrors.push(error);
       }
+
       try {
         await fileHandle?.close();
+
+        this.debugMode && console.log('IMPORT FINALLY - fileHandle closed');
       } catch (error) {
+        this.debugMode &&
+          console.error('IMPORT FINALLY - fileHandle close failed', error);
+
         cleanupErrors.push(error);
       }
+
       try {
         if (temporaryBucket) {
+          this.debugMode &&
+            console.log(
+              'IMPORT FINALLY - deleting temporary R2 object',
+              file.tempKeyOrPath,
+            );
+
           await temporaryBucket.delete(file.tempKeyOrPath);
+
+          this.debugMode &&
+            console.log('IMPORT FINALLY - temporary R2 object deleted');
         } else {
+          this.debugMode &&
+            console.log(
+              'IMPORT FINALLY - deleting temporary local file',
+              file.tempKeyOrPath,
+            );
+
           await fse.remove(file.tempKeyOrPath);
+
+          this.debugMode &&
+            console.log('IMPORT FINALLY - temporary local file deleted');
         }
       } catch (error) {
+        this.debugMode &&
+          console.error(
+            'IMPORT FINALLY - temporary file cleanup failed',
+            error,
+          );
+
         cleanupErrors.push(error);
       }
+
       if (cleanupErrors.length) {
+        this.debugMode &&
+          console.error('IMPORT FINALLY - cleanup errors', cleanupErrors);
+
         if (operationError) {
           throw new AggregateError(
             [operationError, ...cleanupErrors],
             'Raw migration ZIP import failed and temporary-file cleanup was incomplete.',
           );
         }
+
         throw new AggregateError(
           cleanupErrors,
           'Raw migration ZIP import completed, but temporary-file cleanup was incomplete.',
         );
       }
+
+      this.debugMode && console.log('IMPORT FINALLY - cleanup finished');
     }
+
     //#endregion
   }
   //#endregion
@@ -1021,46 +1284,207 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     entry: FileEntry,
   ): Promise<void> {
     //#region @backendFunc
+
+    console.log('writeZipEntry START', {
+      filename: entry.filename,
+      destinationKey,
+      compressedSize: entry.compressedSize,
+      uncompressedSize: entry.uncompressedSize,
+      runtime: this.isR2Runtime() ? 'r2' : 'local',
+    });
+
     //#region @cjsRemove
     if (this.isR2Runtime()) {
-      const transform = new TransformStream<Uint8Array, Uint8Array>();
-      const upload = this.getR2Bucket(context).put(
-        destinationKey,
-        transform.readable as any,
-      );
+      const bucket = this.getR2Bucket(context);
+
+      // Special handling for empty ZIP entries.
+      if (entry.uncompressedSize === 0) {
+        this.debugMode &&
+          console.log('writeZipEntry EMPTY', {
+            filename: entry.filename,
+            destinationKey,
+          });
+
+        try {
+          const result = await bucket.put(destinationKey, new Uint8Array(0));
+
+          if (!result) {
+            throw new Error(
+              `Could not stage empty ZIP entry "${entry.filename}".`,
+            );
+          }
+
+          this.debugMode &&
+            console.log('writeZipEntry EMPTY DONE', {
+              filename: entry.filename,
+            });
+
+          return;
+        } catch (error) {
+          this.debugMode &&
+            console.error('writeZipEntry EMPTY FAILED', {
+              filename: entry.filename,
+              destinationKey,
+              error,
+            });
+
+          throw error;
+        }
+      }
+
+      this.debugMode &&
+        console.log('writeZipEntry creating FixedLengthStream', {
+          filename: entry.filename,
+          expectedLength: entry.uncompressedSize,
+        });
+
+      const stream = new FixedLengthStream(entry.uncompressedSize);
+
+      this.debugMode &&
+        console.log('writeZipEntry starting R2 upload', {
+          filename: entry.filename,
+          destinationKey,
+        });
+
+      const uploadPromise = bucket.put(destinationKey, stream.readable as any);
+
+      this.debugMode &&
+        console.log('writeZipEntry starting ZIP extraction', {
+          filename: entry.filename,
+        });
+
+      const extractPromise = entry.getData(stream.writable);
+
       try {
-        await entry.getData(transform.writable);
-        const result = await upload;
-        if (!result) {
+        this.debugMode &&
+          console.log('writeZipEntry awaiting Promise.all', {
+            filename: entry.filename,
+          });
+
+        const [extractResult, uploadResult] = await Promise.all([
+          extractPromise,
+          uploadPromise,
+        ]);
+
+        this.debugMode &&
+          console.log('writeZipEntry Promise.all DONE', {
+            filename: entry.filename,
+            extractResult:
+              extractResult === undefined ? 'undefined' : typeof extractResult,
+            uploadResult: !!uploadResult,
+          });
+
+        if (!uploadResult) {
           throw new Error(`Could not stage ZIP entry "${entry.filename}".`);
         }
+
+        this.debugMode &&
+          console.log('writeZipEntry DONE', {
+            filename: entry.filename,
+            destinationKey,
+            bytes: entry.uncompressedSize,
+          });
+
+        return;
       } catch (error) {
+        //
+        // IMPORTANT:
+        // Log the ORIGINAL error before doing any cleanup.
+        //
+        this.debugMode &&
+          console.error('writeZipEntry ORIGINAL ERROR', {
+            filename: entry.filename,
+            destinationKey,
+            compressedSize: entry.compressedSize,
+            uncompressedSize: entry.uncompressedSize,
+            error,
+          });
+
         const cleanupErrors: unknown[] = [];
+
         try {
-          await transform.writable.abort(error);
+          this.debugMode &&
+            console.log('writeZipEntry aborting writable', {
+              filename: entry.filename,
+            });
+
+          await stream.writable.abort(error);
+
+          this.debugMode &&
+            console.log('writeZipEntry writable aborted', {
+              filename: entry.filename,
+            });
         } catch (cleanupError) {
+          this.debugMode &&
+            console.error('writeZipEntry ABORT ERROR', {
+              filename: entry.filename,
+              cleanupError,
+            });
+
           cleanupErrors.push(cleanupError);
         }
+
         try {
-          await upload;
+          this.debugMode &&
+            console.log('writeZipEntry awaiting upload after error', {
+              filename: entry.filename,
+            });
+
+          await uploadPromise;
+
+          this.debugMode &&
+            console.log('writeZipEntry upload settled after error', {
+              filename: entry.filename,
+            });
         } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
+          this.debugMode &&
+            console.error('writeZipEntry UPLOAD ERROR', {
+              filename: entry.filename,
+              cleanupError,
+            });
+
+          if (cleanupError !== error) {
+            cleanupErrors.push(cleanupError);
+          }
         }
+
         if (cleanupErrors.length) {
-          throw new AggregateError(
-            [error, ...cleanupErrors],
-            `ZIP entry "${entry.filename}" failed and its upload cleanup also failed.`,
-          );
+          this.debugMode &&
+            console.error('writeZipEntry CLEANUP ERRORS', {
+              filename: entry.filename,
+              originalError: error,
+              cleanupErrors,
+            });
         }
+
+        //
+        // DEBUGGING:
+        // Keep the ORIGINAL exception visible.
+        //
         throw error;
       }
-      return;
     }
     //#endregion
+
     //#region @esmRemove
     const destinationPath = this.localObjectPath(context, destinationKey);
+
+    this.debugMode &&
+      console.log('writeZipEntry LOCAL START', {
+        filename: entry.filename,
+        destinationPath,
+        uncompressedSize: entry.uncompressedSize,
+      });
+
     await fse.ensureDir(path.dirname(destinationPath));
+
     await entry.getData(Writable.toWeb(fse.createWriteStream(destinationPath)));
+
+    this.debugMode &&
+      console.log('writeZipEntry LOCAL DONE', {
+        filename: entry.filename,
+        destinationPath,
+      });
     //#endregion
 
     return void 0 as any;
@@ -1812,54 +2236,65 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     producer: (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>,
   ): Promise<void> {
     //#region @backendFunc
-    let writable: WritableStream<Uint8Array>;
-    let uploadPromise: Promise<unknown> | undefined;
-    if (this.isR2Runtime()) {
-      const transform = new TransformStream<Uint8Array, Uint8Array>();
-      writable = transform.writable;
-      uploadPromise = this.getR2Bucket(context).put(
-        key,
-        transform.readable as any,
-      );
-    } else {
-      //#region @esmRemove
-      const filePath = this.localObjectPath(context, key);
-      await fse.ensureDir(path.dirname(filePath));
-      writable = Writable.toWeb(
-        fse.createWriteStream(filePath),
-      ) as WritableStream<Uint8Array>;
-      //#endregion
-    }
 
-    const writer = writable.getWriter();
-    try {
-      await producer(chunk => writer.write(chunk));
-      await writer.close();
-      if (uploadPromise && !(await uploadPromise)) {
+    //#region @cjsRemove
+    if (this.isR2Runtime()) {
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+
+      await producer(async chunk => {
+        chunks.push(chunk);
+        totalBytes += chunk.byteLength;
+      });
+
+      const data = new Uint8Array(totalBytes);
+
+      let offset = 0;
+
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+
+      const result = await this.getR2Bucket(context).put(key, data);
+
+      if (!result) {
         throw new Error(`Raw migration object "${key}" was not stored.`);
       }
+
+      return;
+    }
+    //#endregion
+
+    //#region @esmRemove
+    const filePath = this.localObjectPath(context, key);
+
+    await fse.ensureDir(path.dirname(filePath));
+
+    const writable = Writable.toWeb(
+      fse.createWriteStream(filePath),
+    ) as WritableStream<Uint8Array>;
+
+    const writer = writable.getWriter();
+
+    try {
+      await producer(chunk => writer.write(chunk));
+
+      await writer.close();
     } catch (error) {
-      const cleanupErrors: unknown[] = [];
       try {
         await writer.abort(error);
       } catch (cleanupError) {
-        cleanupErrors.push(cleanupError);
-      }
-      if (uploadPromise) {
-        try {
-          await uploadPromise;
-        } catch (cleanupError) {
-          cleanupErrors.push(cleanupError);
-        }
-      }
-      if (cleanupErrors.length) {
         throw new AggregateError(
-          [error, ...cleanupErrors],
+          [error, cleanupError],
           `Raw migration object "${key}" failed and stream cleanup also failed.`,
         );
       }
+
       throw error;
     }
+    //#endregion
+
     //#endregion
   }
   //#endregion

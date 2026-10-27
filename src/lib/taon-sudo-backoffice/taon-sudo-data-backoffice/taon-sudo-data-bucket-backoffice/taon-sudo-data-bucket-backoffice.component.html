@@ -1,7 +1,9 @@
-<h1>{{ t.gettext('Bucket data') }}</h1>
+<h1 class="mb-2">{{ t.gettext('Bucket data') }}</h1>
 
-<div class="selectors">
-  <mat-form-field appearance="outline">
+<div class="selectors pb-4">
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
     <mat-label>{{ t.gettext('Context') }}</mat-label>
     <mat-select
       [value]="selectedContext()"
@@ -12,7 +14,9 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
     <mat-label>{{ t.gettext('Storage Controller') }}</mat-label>
     <mat-select
       [value]="selectedController()"

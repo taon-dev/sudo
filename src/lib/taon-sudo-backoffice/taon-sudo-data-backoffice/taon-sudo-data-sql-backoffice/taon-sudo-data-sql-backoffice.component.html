@@ -1,7 +1,7 @@
-<h1>{{ t.gettext('SQL data') }}</h1>
+<h1 class="mb-2">{{ t.gettext('SQL data') }}</h1>
 
-<div class="selectors">
-  <mat-form-field appearance="outline">
+<div class="selectors pb-4">
+  <mat-form-field appearance="outline" class="w-full" >
     <mat-label>{{ t.gettext('Context') }}</mat-label>
     <mat-select
       [value]="selectedContext()"
@@ -12,7 +12,7 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" class="w-full">
     <mat-label>{{ t.gettext('Entity') }}</mat-label>
     <mat-select
       [value]="selectedEntity()"
@@ -25,7 +25,6 @@
       }
     </mat-select>
   </mat-form-field>
-
   <button
     mat-flat-button
     color="primary"

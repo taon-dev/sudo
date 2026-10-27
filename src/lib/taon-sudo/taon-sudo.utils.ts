@@ -1,3 +1,5 @@
+import { TaonSessionEntityClassName } from '@taon-dev/session/src';
+
 import { TaonSudoModels } from './taon-sudo.models';
 
 export namespace TaonSudoUtils {
@@ -9,8 +11,8 @@ export namespace TaonSudoUtils {
     return (
       !entityName.startsWith('TaonSudo') &&
       !tableName.startsWith('TaonSudo') &&
-      !entityName.startsWith('TaonSession') &&
-      !tableName.startsWith('TaonSession') &&
+      entityName !== TaonSessionEntityClassName &&
+      tableName !== TaonSessionEntityClassName &&
       entityName !== 'TAON_MIGRATION_META' &&
       tableName !== 'TAON_MIGRATION_META'
     );

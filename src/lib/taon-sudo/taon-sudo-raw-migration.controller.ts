@@ -254,10 +254,6 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   //#region methods / import raw migration snapshot
   @POST({
     overrideContentType: 'multipart/form-data',
-    middlewares: ({ parentMiddlewares }) => ({
-      ...parentMiddlewares,
-      TaonBaseFileUploadMiddleware,
-    }),
   })
   importRawMigrationSnapshot(
     @Query('contextName') contextName: string,

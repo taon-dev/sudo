@@ -43,6 +43,7 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
 export class TaonSudoRawMigrationsBackofficeComponent
   implements OnInit, OnDestroy
 {
+  //#region fields & getters
   t = t.for(this);
 
   private readonly api = inject(TaonSudoRawMigrationsBackofficeApiService);
@@ -72,6 +73,7 @@ export class TaonSudoRawMigrationsBackofficeComponent
   readonly statusMessage = signal('');
 
   private destroyed = false;
+  //#endregion
 
   //#region methods / ng on init
   ngOnInit(): void {

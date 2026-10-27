@@ -1,7 +1,9 @@
 <h1 class="mb-2">{{ t.gettext('SQL data') }}</h1>
 
 <div class="selectors pb-4">
-  <mat-form-field appearance="outline" class="w-full" >
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
     <mat-label>{{ t.gettext('Context') }}</mat-label>
     <mat-select
       [value]="selectedContext()"
@@ -12,15 +14,25 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" class="w-full">
-    <mat-label>{{ t.gettext('Entity') }}</mat-label>
+  <mat-form-field
+    appearance="outline"
+    class="w-full">
+    <mat-label>{{
+      t.gettext('Entities (found [[ length ]])', {
+        length: entities()?.length || 0,
+      })
+    }}</mat-label>
     <mat-select
       [value]="selectedEntity()"
       [disabled]="!entities().length"
       (selectionChange)="entityChanged($event.value)">
       @for (entity of entities(); track entity.name) {
         <mat-option [value]="entity.name">
-          {{ entity.name === entity.tableName ? entity.name : (entity.name + ' (' + entity.tableName + ')' ) }}
+          {{
+            entity.name === entity.tableName
+              ? entity.name
+              : entity.name + ' (' + entity.tableName + ')'
+          }}
         </mat-option>
       }
     </mat-select>

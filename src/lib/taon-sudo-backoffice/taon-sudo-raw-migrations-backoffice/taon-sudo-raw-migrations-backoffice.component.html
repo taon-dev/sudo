@@ -34,6 +34,7 @@
       (click)="selectTab('snapshot')">
       {{ t.gettext('Snapshot') }}
     </button>
+
     <button
       type="button"
       [class.selected]="activeTab() === 'restore'"
@@ -57,10 +58,12 @@
       aria-live="polite">
       <div class="job-heading">
         <strong>{{ job.phase }}</strong>
+
         @if (job.total > 0) {
           <span>{{ job.completed }} / {{ job.total }}</span>
         }
       </div>
+
       @if (job.total > 0) {
         <progress
           [value]="job.completed"
@@ -68,10 +71,11 @@
       } @else {
         <progress></progress>
       }
+
       @if (job.operation === 'create' && job.status === 'running') {
         <button
           type="button"
-          class="stop"
+          class="action-btn danger"
           (click)="stopSnapshot()">
           {{ t.gettext('Stop after current item') }}
         </button>
@@ -102,17 +106,21 @@
           <h2>{{ t.gettext('Snapshots') }}</h2>
           <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
         </div>
+
         <div class="snapshot-actions">
           <button
             type="button"
+            class="action-btn primary"
             [disabled]="busy() || !selectedContext()"
             (click)="openCreateDialog()">
             {{ t.gettext('Create snapshot') }}
           </button>
+
           <label
-            class="file-button"
+            class="action-btn"
             [class.disabled]="busy() || !selectedContext()">
             {{ t.gettext('Import ZIP') }}
+
             <input
               type="file"
               accept=".zip,application/zip"
@@ -121,6 +129,7 @@
           </label>
         </div>
       </div>
+
       @if (snapshots().length === 0) {
         <p>
           {{ t.gettext('No raw migration snapshots found for this context.') }}
@@ -134,6 +143,7 @@
               <th>{{ t.gettext('Actions') }}</th>
             </tr>
           </thead>
+
           <tbody>
             @for (snapshot of snapshots(); track snapshot.id) {
               <tr>
@@ -144,20 +154,26 @@
                     {{ formatBytes(snapshot.totalBytes) }}
                   </small>
                 </td>
+
                 <td>{{ snapshot.createdAt | date: 'medium' }}</td>
-                <td class="snapshot-actions">
-                  <a
-                    [href]="exportUrl(snapshot)"
-                    download>
-                    {{ t.gettext('Export ZIP') }}
-                  </a>
-                  <button
-                    type="button"
-                    class="danger"
-                    [disabled]="busy()"
-                    (click)="deleteSnapshot(snapshot)">
-                    {{ t.gettext('Delete') }}
-                  </button>
+
+                <td>
+                  <div class="snapshot-actions">
+                    <a
+                      class="action-btn"
+                      [href]="exportUrl(snapshot)"
+                      download>
+                      {{ t.gettext('Export ZIP') }}
+                    </a>
+
+                    <button
+                      type="button"
+                      class="action-btn danger"
+                      [disabled]="busy()"
+                      (click)="deleteSnapshot(snapshot)">
+                      {{ t.gettext('Delete') }}
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
@@ -169,16 +185,19 @@
     <section class="snapshot-list">
       <h2>{{ t.gettext('Restore snapshot') }}</h2>
       <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
+
       <label class="clear-data-option">
         <input
           type="checkbox"
           [checked]="clearAllData()"
           [disabled]="busy()"
           (change)="setClearAllData($event)" />
+
         <span>
           {{ t.gettext('Clear all data before restore') }}
         </span>
       </label>
+
       @if (snapshots().length === 0) {
         <p>
           {{ t.gettext('No raw migration snapshots found for this context.') }}
@@ -192,6 +211,7 @@
               <th>{{ t.gettext('Actions') }}</th>
             </tr>
           </thead>
+
           <tbody>
             @for (snapshot of snapshots(); track snapshot.id) {
               <tr>
@@ -202,10 +222,13 @@
                     {{ formatBytes(snapshot.totalBytes) }}
                   </small>
                 </td>
+
                 <td>{{ snapshot.createdAt | date: 'medium' }}</td>
+
                 <td>
                   <button
                     type="button"
+                    class="action-btn primary"
                     [disabled]="busy()"
                     (click)="restoreSnapshot(snapshot)">
                     {{ t.gettext('Restore') }}
@@ -230,6 +253,7 @@
         [attr.aria-label]="t.gettext('Create snapshot')"
         (submit)="createSnapshot($event)">
         <h2>{{ t.gettext('Create snapshot') }}</h2>
+
         <mat-form-field appearance="outline">
           <mat-label>{{ t.gettext('Context') }}</mat-label>
 
@@ -256,13 +280,18 @@
             [value]="snapshotName()"
             (input)="setSnapshotName($event)" />
         </mat-form-field>
+
         <div class="dialog-actions">
           <button
             type="button"
+            class="action-btn"
             (click)="closeCreateDialog()">
             {{ t.gettext('Cancel') }}
           </button>
-          <button type="submit">
+
+          <button
+            type="submit"
+            class="action-btn primary">
             {{ t.gettext('Create snapshot') }}
           </button>
         </div>

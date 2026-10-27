@@ -14,9 +14,9 @@ h2 {
   margin: 0;
 }
 
+//#region toolbar
+
 .toolbar,
-.snapshot,
-.snapshot-actions,
 .job-heading {
   align-items: center;
   display: flex;
@@ -29,6 +29,16 @@ h2 {
   padding-bottom: 1rem;
 }
 
+.toolbar label {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+//#endregion
+
+//#region tabs
+
 .tabs {
   border-bottom: 1px solid #ddd;
   display: flex;
@@ -36,8 +46,17 @@ h2 {
 }
 
 .tabs button {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  background: transparent;
+  border: 1px solid #ccc;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.55rem 0.9rem;
+}
+
+.tabs button:hover {
+  background: #f5f5f5;
 }
 
 .tabs button.selected {
@@ -45,13 +64,96 @@ h2 {
   font-weight: 600;
 }
 
-.toolbar label {
+//#endregion
+
+//#region action buttons
+
+.action-btn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #333;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  justify-content: center;
+  line-height: 1;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.action-btn:hover:not(:disabled):not(.disabled) {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+.action-btn:disabled,
+.action-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.action-btn.primary {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
+}
+
+.action-btn.primary:hover:not(:disabled):not(.disabled) {
+  background: #1565c0;
+  border-color: #1565c0;
+}
+
+.action-btn.danger {
+  background: #fff;
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.action-btn.danger:hover:not(:disabled):not(.disabled) {
+  background: #fff5f5;
+  border-color: #b71c1c;
+  color: #b71c1c;
+}
+
+.action-btn input[type='file'] {
+  display: none;
+}
+
+//#endregion
+
+//#region snapshot actions
+
+.snapshot-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
+//#endregion
+
+//#region clear data
+
 .clear-data-option {
+  align-items: center;
   cursor: pointer;
   display: flex;
   gap: 0.5rem;
@@ -62,23 +164,9 @@ h2 {
   margin: 0;
 }
 
-button,
-.file-button {
-  border: 1px solid #777;
-  border-radius: 4px;
-  cursor: pointer;
-  padding: 0.45rem 0.7rem;
-}
+//#endregion
 
-button:disabled,
-.file-button.disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.file-button input {
-  display: none;
-}
+//#region job
 
 .job {
   border: 1px solid #ddd;
@@ -92,22 +180,22 @@ button:disabled,
   width: 100%;
 }
 
-.snapshot-actions a {
-  white-space: nowrap;
-}
+//#endregion
 
-.section-heading,
-.snapshot-actions {
+//#region section
+
+.section-heading {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-}
-
-.section-heading {
   justify-content: space-between;
   margin-bottom: 0.75rem;
 }
+
+//#endregion
+
+//#region table
 
 table {
   border-collapse: collapse;
@@ -125,6 +213,10 @@ td strong,
 td small {
   display: block;
 }
+
+//#endregion
+
+//#region dialog
 
 .dialog-backdrop {
   align-items: center;
@@ -153,16 +245,16 @@ td small {
 }
 
 .dialog-actions {
+  align-items: center;
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
 }
 
-.danger {
-  color: #a40000;
-}
+//#endregion
 
-.stop,
+//#region messages
+
 .error {
   color: #a40000;
 }
@@ -170,3 +262,5 @@ td small {
 .status {
   color: #333;
 }
+
+//#endregion

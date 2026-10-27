@@ -1509,14 +1509,16 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     const currentEntities = context.connection!.entityMetadatas.filter(item =>
       TaonSudoUtils.isRawMigrationSqlEntityIncluded(item.name, item.tableName),
     );
-    const currentEntityNames = currentEntities.map(item => item.name).sort();
+    const currentEntityNames = currentEntities
+      .map(item => item.tableName)
+      .sort();
     const snapshotEntityNames = manifest.sqlEntities
-      .map(item => item.name)
+      .map(item => item.tableName)
       .sort();
     if (
       currentEntityNames.length !== snapshotEntityNames.length ||
       currentEntityNames.some(
-        (name, index) => name !== snapshotEntityNames[index],
+        (tableName, index) => tableName !== snapshotEntityNames[index],
       )
     ) {
       throw new Error(
@@ -1524,7 +1526,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       );
     }
     for (const entity of manifest.sqlEntities) {
-      const metadata = currentEntities.find(item => item.name === entity.name);
+      const metadata = currentEntities.find(item => item.tableName === entity.tableName);
       if (
         !metadata ||
         metadata.tableName !== entity.tableName ||
@@ -1663,8 +1665,8 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           entity.name,
         ) as Repository<Record<string, unknown>>;
 
-        if(!repoForEntity) {
-          throw `[restoreSnapshotBackend] no repo for entity "${entity.name}"`
+        if (!repoForEntity) {
+          throw `[restoreSnapshotBackend] no repo for entity "${entity.name}"`;
         }
 
         repositoryByName.set(entity.name, repoForEntity);

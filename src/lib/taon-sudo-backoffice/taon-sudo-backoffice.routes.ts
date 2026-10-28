@@ -15,6 +15,7 @@ export const TaonSudoBackofficeRoutes: Routes = [
       adminLazyRoute({
         path: 'data',
         menuItem: 'Data',
+        color: 'red',
         icon: 'storage',
         expandable: false,
         loader: () =>
@@ -27,6 +28,7 @@ export const TaonSudoBackofficeRoutes: Routes = [
         path: 'app-state',
         menuItem: 'App State',
         icon: 'power',
+        color: 'red',
         expandable: false,
         loader: () =>
           import('./taon-sudo-app-state-backoffice/taon-sudo-app-state-backoffice.routes').then(
@@ -38,6 +40,7 @@ export const TaonSudoBackofficeRoutes: Routes = [
         path: 'http-errors',
         menuItem: 'HTTP Errors',
         icon: 'error',
+        color: 'red',
         expandable: false,
         loader: () =>
           import('./taon-sudo-http-errors-backoffice/taon-sudo-http-errors-backoffice.routes').then(
@@ -49,6 +52,7 @@ export const TaonSudoBackofficeRoutes: Routes = [
         path: 'raw-migrations',
         menuItem: 'Raw Migrations',
         icon: 'swap_vert',
+        color: 'red',
         expandable: false,
         loader: () =>
           import('./taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.routes').then(

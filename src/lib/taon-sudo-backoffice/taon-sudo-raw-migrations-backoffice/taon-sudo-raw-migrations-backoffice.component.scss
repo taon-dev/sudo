@@ -38,7 +38,6 @@ h2 {
 //#endregion
 
 //#region tabs
-
 .tabs {
   border-bottom: 1px solid #ddd;
   display: flex;
@@ -50,9 +49,15 @@ h2 {
   border: 1px solid #ccc;
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
+  color: #333; // <-- important
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
   padding: 0.55rem 0.9rem;
+  visibility: visible;
+  opacity: 1;
 }
 
 .tabs button:hover {
@@ -61,9 +66,9 @@ h2 {
 
 .tabs button.selected {
   background: #eee;
+  color: #111; // <-- explicitly set selected text color
   font-weight: 600;
 }
-
 //#endregion
 
 //#region action buttons

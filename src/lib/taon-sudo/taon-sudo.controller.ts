@@ -393,17 +393,23 @@ export class TaonSudoController extends TaonBaseController<
         try {
           await queryRunner.connect();
 
-          const rows = await queryRunner.query(
-            `SELECT * FROM "${TAON_MIGRATION_META_TABLE_NAME}"
-         ORDER BY "id" ASC
-         LIMIT ? OFFSET ?`,
-            [safePageSize, safePage * safePageSize],
+          const driver = queryRunner.connection.driver;
+          const escapedTableName = driver.escape(
+            TAON_MIGRATION_META_TABLE_NAME,
           );
 
-          const countResult = await queryRunner.query(
-            `SELECT COUNT(*) AS count
-         FROM "${TAON_MIGRATION_META_TABLE_NAME}"`,
-          );
+          const rows = await queryRunner.query(`
+        SELECT *
+        FROM ${escapedTableName}
+        ORDER BY ${driver.escape('id')} ASC
+        LIMIT ${safePageSize}
+        OFFSET ${safePage * safePageSize}
+      `);
+
+          const countResult = await queryRunner.query(`
+        SELECT COUNT(*) AS count
+        FROM ${escapedTableName}
+      `);
 
           return {
             columns,
@@ -430,39 +436,64 @@ export class TaonSudoController extends TaonBaseController<
         includeVirtual: !classRepo.repository,
       });
 
-      const primaryOrder = Object.fromEntries(
-        repository.metadata.primaryColumns.map(column => [
-          column.propertyName,
-          'ASC' as const,
-        ]),
-      );
+      const context = this.getContext(contextName);
 
-      const [entities, totalCount] = await repository.findAndCount({
-        skip: safePage * safePageSize,
-        take: safePageSize,
-        loadEagerRelations: false,
-        order: primaryOrder,
-      });
+      if (!context.connection) {
+        Taon.error({
+          status: getStatusCode(HttpStatusEnum.BAD_REQUEST),
+          message: `Context "${contextName}" does not have an initialized SQL connection.`,
+        });
+      }
 
-      return {
-        columns: columns.map(column => ({
-          name: column.databaseName,
-          propertyName: column.propertyName,
-          primary: column.isPrimary,
-          generated: column.isGenerated,
-          nullable: column.isNullable,
-        })),
-        rows: entities.map(entity => {
-          const row: Record<string, unknown> = {};
+      const queryRunner = context.connection!.createQueryRunner();
 
-          for (const column of columns) {
-            row[column.propertyName] = entity[column.propertyName];
-          }
+      try {
+        await queryRunner.connect();
 
-          return row;
-        }),
-        totalCount,
-      };
+        const driver = queryRunner.connection.driver;
+        const metadata = repository.metadata;
+
+        const escapedTableName = driver.escape(metadata.tableName);
+
+        const primaryColumns = metadata.primaryColumns;
+
+        if (!primaryColumns.length) {
+          throw new Error(
+            `SQL table "${metadata.tableName}" has no primary key; stable pagination is not available.`,
+          );
+        }
+
+        const orderBy = primaryColumns
+          .map(column => `${driver.escape(column.databaseName)} ASC`)
+          .join(', ');
+
+        const rows: Record<string, unknown>[] = await queryRunner.query(`
+      SELECT *
+      FROM ${escapedTableName}
+      ORDER BY ${orderBy}
+      LIMIT ${safePageSize}
+      OFFSET ${safePage * safePageSize}
+    `);
+
+        const countResult = await queryRunner.query(`
+      SELECT COUNT(*) AS count
+      FROM ${escapedTableName}
+    `);
+
+        return {
+          columns: columns.map(column => ({
+            name: column.databaseName,
+            propertyName: column.propertyName,
+            primary: column.isPrimary,
+            generated: column.isGenerated,
+            nullable: column.isNullable,
+          })),
+          rows,
+          totalCount: Number(countResult?.[0]?.count || 0),
+        };
+      } finally {
+        await queryRunner.release();
+      }
 
       //#endregion
     };

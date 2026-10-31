@@ -482,9 +482,12 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           //     `SQL entity "${metadata.name}" is not registered in context "${context.contextName}".`,
           //   );
           // }
+          const hasTaonRepo = !!this.ctx.getClassFunByClassName(
+            metadata.tableName,
+          );
           const repository = queryRunner.manager.getRepository(metadata.target);
-          const columns = repository.metadata.columns.filter(
-            column => !column.isVirtual && !column.isVirtualProperty,
+          const columns = repository.metadata.columns.filter(column =>
+            hasTaonRepo ? !column.isVirtual && !column.isVirtualProperty : true,
           );
           const primaryColumns = repository.metadata.primaryColumns;
           if (!primaryColumns.length) {
@@ -501,29 +504,42 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
             primaryColumns.map(column => [column.propertyPath, 'ASC']),
           );
           await this.writeObject(context, stagePrefix + file, async write => {
+            const driver = queryRunner.connection.driver;
+
+            const escapedTableName = driver.escape(metadata.tableName);
+
+            const orderBy = primaryColumns
+              .map(column => driver.escape(column.databaseName))
+              .join(', ');
+
             while (true) {
               assertNotCancelled();
-              const entities = await rowsRepository.find({
-                skip: offset,
-                take: ROW_BATCH_SIZE,
-                order,
-                loadEagerRelations: false,
-              });
-              if (entities.length === 0) {
+
+              const rows: Record<string, unknown>[] = await queryRunner.query(
+                `
+        SELECT *
+        FROM ${escapedTableName}
+        ORDER BY ${orderBy}
+        LIMIT ${ROW_BATCH_SIZE}
+        OFFSET ${offset}
+      `,
+              );
+
+              if (rows.length === 0) {
                 break;
               }
-              for (const entity of entities) {
-                const row: Record<string, unknown> = {};
-                for (const column of columns) {
-                  row[column.propertyPath] = column.getEntityValue(entity);
-                }
+
+              for (const row of rows) {
                 const line = `${JSON.stringify(encodeRawValue(row))}\n`;
                 const encodedLine = new TextEncoder().encode(line);
+
                 await write(encodedLine);
                 totalBytes += encodedLine.byteLength;
               }
-              offset += entities.length;
-              if (entities.length < ROW_BATCH_SIZE) {
+
+              offset += rows.length;
+
+              if (rows.length < ROW_BATCH_SIZE) {
                 break;
               }
             }
@@ -1285,13 +1301,14 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   ): Promise<void> {
     //#region @backendFunc
 
-    console.log('writeZipEntry START', {
-      filename: entry.filename,
-      destinationKey,
-      compressedSize: entry.compressedSize,
-      uncompressedSize: entry.uncompressedSize,
-      runtime: this.isR2Runtime() ? 'r2' : 'local',
-    });
+    this.debugMode &&
+      console.log('writeZipEntry START', {
+        filename: entry.filename,
+        destinationKey,
+        compressedSize: entry.compressedSize,
+        uncompressedSize: entry.uncompressedSize,
+        runtime: this.isR2Runtime() ? 'r2' : 'local',
+      });
 
     //#region @cjsRemove
     if (this.isR2Runtime()) {
@@ -1526,12 +1543,22 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       );
     }
     for (const entity of manifest.sqlEntities) {
-      const metadata = currentEntities.find(item => item.tableName === entity.tableName);
+      const metadata = currentEntities.find(
+        item => item.tableName === entity.tableName,
+      );
       if (
         !metadata ||
         metadata.tableName !== entity.tableName ||
         metadata.columns
-          .filter(column => !column.isVirtual && !column.isVirtualProperty)
+          .filter(column => {
+            const hasTaonRepo = !!this.ctx.getClassFunByClassName(
+              metadata.tableName,
+            );
+            if (!hasTaonRepo) {
+              return true;
+            }
+            return !column.isVirtual && !column.isVirtualProperty;
+          })
           .map(column => column.propertyPath)
           .sort()
           .join('\0') !== [...entity.columns].sort().join('\0')
@@ -1821,47 +1848,136 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     repository: Repository<Record<string, unknown>>,
     clearAllData: boolean,
   ): Promise<void> {
-    const allowedColumns = new Set(entity.columns);
-    let batch: Record<string, unknown>[] = [];
-    await this.forEachLine(context, storageKey, async line => {
-      if (!line.trim()) {
-        return;
-      }
-      const parsed: unknown = JSON.parse(line);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error(`Invalid row data in snapshot table "${entity.name}".`);
-      }
-      const row: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(parsed)) {
-        if (!allowedColumns.has(key)) {
-          throw new Error(
-            `Unexpected column "${key}" in snapshot table "${entity.name}".`,
+    const connection = context.connection!;
+
+    const queryRunner = connection.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const metadata = repository.metadata;
+      const driver = connection.driver;
+
+      const tableName = driver.escape(metadata.tableName);
+
+      const columnsByDatabaseName = new Map(
+        metadata.columns.map(column => [column.databaseName, column]),
+      );
+
+      const allowedColumns = new Set(entity.columns);
+
+      const insertBatch = async (
+        batch: Record<string, unknown>[],
+      ): Promise<void> => {
+        if (!batch.length) {
+          return;
+        }
+
+        for (const row of batch) {
+          const columnNames = Object.keys(row);
+
+          if (!columnNames.length) {
+            continue;
+          }
+
+          //
+          // When restoring on top of existing data, emulate save/upsert
+          // using the physical primary key.
+          //
+          if (!clearAllData) {
+            const primaryColumns = metadata.primaryColumns;
+
+            const hasCompletePrimaryKey =
+              primaryColumns.length > 0 &&
+              primaryColumns.every(column =>
+                Object.prototype.hasOwnProperty.call(row, column.databaseName),
+              );
+
+            if (hasCompletePrimaryKey) {
+              const where = primaryColumns
+                .map(column => `${driver.escape(column.databaseName)} = ?`)
+                .join(' AND ');
+
+              const params = primaryColumns.map(
+                column => row[column.databaseName],
+              );
+
+              await queryRunner.query(
+                `DELETE FROM ${tableName} WHERE ${where}`,
+                params,
+              );
+            }
+          }
+
+          const escapedColumns = columnNames
+            .map(column => driver.escape(column))
+            .join(', ');
+
+          const placeholders = columnNames.map(() => '?').join(', ');
+
+          const values = columnNames.map(column => row[column]);
+
+          await queryRunner.query(
+            `
+            INSERT INTO ${tableName}
+            (${escapedColumns})
+            VALUES (${placeholders})
+          `,
+            values,
           );
         }
-        const column = repository.metadata.findColumnWithPropertyPath(key);
-        if (!column) {
+      };
+
+      let batch: Record<string, unknown>[] = [];
+
+      await this.forEachLine(context, storageKey, async line => {
+        if (!line.trim()) {
+          return;
+        }
+
+        const parsed: unknown = JSON.parse(line);
+
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
           throw new Error(
-            `Unknown column path "${key}" in snapshot table "${entity.name}".`,
+            `Invalid row data in snapshot table "${entity.name}".`,
           );
         }
-        column.setEntityValue(row, decodeRawValue(value));
-      }
-      batch.push(row);
-      if (batch.length >= ROW_BATCH_SIZE) {
-        if (clearAllData) {
-          await repository.insert(batch);
-        } else {
-          await repository.save(batch);
+
+        const row: Record<string, unknown> = {};
+
+        for (const [key, value] of Object.entries(parsed)) {
+          if (!allowedColumns.has(key)) {
+            throw new Error(
+              `Unexpected column "${key}" in snapshot table "${entity.name}".`,
+            );
+          }
+
+          //
+          // Snapshot now contains physical database column names.
+          //
+          const column = columnsByDatabaseName.get(key);
+
+          if (!column) {
+            throw new Error(
+              `Unknown database column "${key}" in snapshot table "${entity.name}".`,
+            );
+          }
+
+          row[column.databaseName] = decodeRawValue(value);
         }
-        batch = [];
+
+        batch.push(row);
+
+        if (batch.length >= ROW_BATCH_SIZE) {
+          await insertBatch(batch);
+          batch = [];
+        }
+      });
+
+      if (batch.length) {
+        await insertBatch(batch);
       }
-    });
-    if (batch.length) {
-      if (clearAllData) {
-        await repository.insert(batch);
-      } else {
-        await repository.save(batch);
-      }
+    } finally {
+      await queryRunner.release();
     }
   }
   //#endregion

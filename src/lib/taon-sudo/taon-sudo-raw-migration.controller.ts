@@ -342,8 +342,14 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
         }
         job.status = 'failed';
         job.phase = 'Failed';
-        job.error =
-          error instanceof Error ? error.message : 'Raw migration failed.';
+
+        if (error instanceof Error) {
+          job.error = error.message;
+          job.errorStack = error.stack;
+        } else {
+          job.error = 'Raw migration failed.';
+          job.errorStack = String(error);
+        }
       }
     };
 

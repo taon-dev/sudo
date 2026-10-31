@@ -53,6 +53,7 @@ export interface TaonSudoRawMigrationJob {
   completed: number;
   total: number;
   error?: string;
+  errorStack?: string;
 }
 
 export interface TaonSudoRawMigrationJobUpdate {

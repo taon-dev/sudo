@@ -2,6 +2,7 @@
 import { Translation } from '@taon-dev/i18n/src';
 import {
   TaonAuthContextRepository,
+  TaonSessionProvider,
   TaonSessionRepository,
 } from '@taon-dev/session/src';
 import {
@@ -56,6 +57,9 @@ export class TaonSudoController extends TaonBaseController<
     TaonSessionRepository,
   );
 
+  protected readonly taonSessionProvider =
+    this.injectProvider(TaonSessionProvider);
+
   get allContextsName(): string[] {
     return this.allContexts?.map(c => c.contextName) || [];
   }
@@ -85,6 +89,9 @@ export class TaonSudoController extends TaonBaseController<
   protected async beforeEachRequest(
     data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoController>,
   ): Promise<void> {
+    if (this.taonSessionProvider.isLocalhost) {
+      return;
+    }
     await this.taonSessionRepository.throwIfNotAuthenticated(data);
     const { req } = data || {};
     const context = await this.taonAuthContextRepository.getContext(
@@ -93,7 +100,7 @@ export class TaonSudoController extends TaonBaseController<
     );
     // console.log({ userId: req.userId, sessionId: req.sessionId });
     // console.log('context sudo data', context);
-    if (context.isSuperUser || context.isLocalhostBackend) {
+    if (context.isSuperUser) {
       /// OK for super user
     } else {
       Taon.error({

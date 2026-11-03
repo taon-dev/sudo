@@ -3,6 +3,7 @@ import { Translation } from '@taon-dev/i18n/src';
 import {
   TaonAuthContextRepository,
   TaonSessionController,
+  TaonSessionProvider,
   TaonSessionRepository,
 } from '@taon-dev/session/src';
 import { FetchResponseType } from 'ng2-rest/src';
@@ -46,21 +47,24 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   TaonSudoRawMigrationController
 > {
   //#region fields & getters
-  private readonly rawMigrationRepository = this.injectCustomRepo(
+  protected readonly rawMigrationRepository = this.injectCustomRepo(
     TaonSudoRawMigrationRepository,
   );
 
-  private readonly authRepository = this.injectCustomRepo(
+  protected readonly taonSessionProvider =
+    this.injectProvider(TaonSessionProvider);
+
+  protected readonly authRepository = this.injectCustomRepo(
     TaonAuthContextRepository,
   );
 
-  private readonly taonSessionRepository = this.injectCustomRepo(
+  protected readonly taonSessionRepository = this.injectCustomRepo(
     TaonSessionRepository,
   );
 
-  private readonly jobs = new Map<string, ActiveMigrationJob>();
+  protected readonly jobs = new Map<string, ActiveMigrationJob>();
 
-  private contexts: EndpointContext[] = [];
+  protected contexts: EndpointContext[] = [];
   //#endregion
 
   //#region methods / after all ctx inited
@@ -75,6 +79,10 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   protected async beforeEachRequest(
     data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoRawMigrationController>,
   ): Promise<void> {
+    if (this.taonSessionProvider.isLocalhost) {
+      return;
+    }
+
     await this.taonSessionRepository.throwIfNotAuthenticated(data);
     const { req } = data || {};
     const context = await this.authRepository.getContext(

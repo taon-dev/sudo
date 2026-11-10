@@ -151,6 +151,18 @@ interface RestoreOptions {
   onProgress: (update: TaonSudoRawMigrationJobUpdate) => void;
 }
 
+interface ImportSnapshotSource {
+  /**
+   * Cloudflare only: bucket containing file.tempKeyOrPath
+   * (defaults to TAON_TEMP_STORAGE).
+   */
+  r2Bucket?: R2Bucket;
+  /**
+   * Replaces default temporary file removal.
+   */
+  cleanup?: () => Promise<void>;
+}
+
 interface BucketBackup {
   controllerName: string;
   files: TaonStorageObject[];
@@ -318,13 +330,18 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / import snapshot
+  /**
+   * @param source optional override for where the uploaded ZIP lives
+   * (e.g. a multipart-uploaded staged object) and how it is removed afterwards.
+   */
   importSnapshot(
     context: EndpointContext,
     file: TaonUploadedFile,
     name: string,
+    source?: ImportSnapshotSource,
   ): Promise<TaonSudoRawMigrationSummary> {
     //#region @backendFunc
-    return this.importSnapshotBackend(context, file, name);
+    return this.importSnapshotBackend(context, file, name, source);
     //#endregion
   }
   //#endregion
@@ -804,13 +821,15 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     file: TaonUploadedFile,
     name: string,
+    source?: ImportSnapshotSource,
   ): Promise<TaonSudoRawMigrationSummary> {
     //#region @backendFunc
     const snapshotName = this.validateSnapshotName(name);
     let zipReader: ZipReader<unknown> | undefined;
     let fileHandle: FileHandle | undefined;
     const temporaryBucket = this.isR2Runtime()
-      ? (GlobalStorage.get('TAON_TEMP_STORAGE') as R2Bucket | undefined)
+      ? source?.r2Bucket ||
+        (GlobalStorage.get('TAON_TEMP_STORAGE') as R2Bucket | undefined)
       : undefined;
     let operationError: unknown;
 
@@ -1236,7 +1255,9 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
 
       try {
-        if (temporaryBucket) {
+        if (source?.cleanup) {
+          await source.cleanup();
+        } else if (temporaryBucket) {
           this.debugMode &&
             console.log(
               'IMPORT FINALLY - deleting temporary R2 object',

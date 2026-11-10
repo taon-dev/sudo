@@ -10,6 +10,7 @@ export * from './taon-sudo/taon-sudo-raw-migration.controller';
 export * from './taon-sudo/taon-sudo-raw-migration.models'; 
 export * from './taon-sudo/taon-sudo-raw-migration.repository'; 
 export * from './taon-sudo/taon-sudo-snapshot.entity'; 
+export * from './taon-sudo/taon-sudo-upload-storage.controller'; 
 export * from './taon-sudo/taon-sudo.abstract.context'; 
 export * from './taon-sudo/taon-sudo.api.service'; // @browser
 export * from './taon-sudo/taon-sudo.config.service'; // @browser
@@ -23,6 +24,7 @@ export * from './taon-sudo/taon-sudo.utils';
 export * from './taon-sudo-backoffice/taon-sudo-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-backoffice.models'; 
 export * from './taon-sudo-backoffice/taon-sudo-backoffice.routes'; // @browser
+export * from './taon-sudo-backoffice/taon-sudo-confirm-dialog.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-app-state-backoffice/taon-sudo-app-state-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-app-state-backoffice/taon-sudo-app-state-backoffice.models'; 
 export * from './taon-sudo-backoffice/taon-sudo-app-state-backoffice/taon-sudo-app-state-backoffice.routes'; // @browser
@@ -36,6 +38,8 @@ export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-s
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.models'; 
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.routes'; // @browser
+export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-asset-preview.component'; // @browser
+export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.models'; 
 export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.routes'; // @browser

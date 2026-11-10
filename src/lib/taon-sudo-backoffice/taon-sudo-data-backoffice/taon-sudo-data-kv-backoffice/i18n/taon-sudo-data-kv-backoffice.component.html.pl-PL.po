@@ -25,30 +25,38 @@ msgstr ""
 msgid "Reload"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:53
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:56
+msgid "Clear"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:64
+msgid "Clear All"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:69
 msgid "Loading KV data..."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:61
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:80
 msgid "Edit value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:61
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:80
 msgid "Add value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:63
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:82
 msgid "Key"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:73
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:92
 msgid "Value (JSON)"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:86
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:105
 msgid "Save"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:92
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.html:111
 msgid "Cancel"
 msgstr ""

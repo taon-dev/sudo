@@ -1,0 +1,13 @@
+msgid ""
+msgstr ""
+"Language: pl-PL\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-asset-preview.component.ts:115
+msgid "The preview could not be displayed. The file may be unsupported by this browser."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-asset-preview.component.ts:162
+msgid "The preview could not be loaded."
+msgstr ""

@@ -2,6 +2,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -19,6 +20,7 @@ import {
   TaonSudoSqlColumn,
   TaonSudoSqlEntity,
 } from '../../../taon-sudo/taon-sudo.api.service';
+import { TaonSudoConfirmDialogComponent } from '../../taon-sudo-confirm-dialog.component';
 
 
 import {
@@ -66,6 +68,31 @@ export class TaonSudoDataSqlBackofficeComponent {
   readonly loading = signal(false);
 
   readonly error = signal('');
+
+  readonly status = signal('');
+
+  readonly selectedEntityInfo = computed(() =>
+    this.entities().find(entity => entity.name === this.selectedEntity()),
+  );
+
+  /**
+   * Reason why edit/delete is not possible for the selected table.
+   */
+  readonly rowOperationsDisabledReason = computed(() => {
+    const entity = this.selectedEntityInfo();
+    if (!entity) {
+      return '';
+    }
+    if (entity.rowOperationsDisabledReason) {
+      return entity.rowOperationsDisabledReason;
+    }
+    if (!entity.columns.some(column => column.primary)) {
+      return this.t.gettext(
+        'This table has no primary key, so edit and delete are disabled.',
+      );
+    }
+    return '';
+  });
 
   get allowedColumns(): string[] {
     return this.columns().map(column => column.field);
@@ -174,17 +201,20 @@ export class TaonSudoDataSqlBackofficeComponent {
             {
               type: 'icon',
               icon: 'edit',
-              disabled: () =>
-                !this.currentEntity()?.columns.some(column => column.primary),
-              tooltip: this.t.gettext('Edit row'),
+              disabled: () => !!this.rowOperationsDisabledReason(),
+              tooltip:
+                this.rowOperationsDisabledReason() ||
+                this.t.gettext('Edit row'),
               click: (row: Record<string, unknown>) => void this.editRow(row),
             },
             {
               type: 'icon',
               icon: 'delete',
-              disabled: () =>
-                !this.currentEntity()?.columns.some(column => column.primary),
-              tooltip: this.t.gettext('Delete row'),
+              color: 'warn',
+              disabled: () => !!this.rowOperationsDisabledReason(),
+              tooltip:
+                this.rowOperationsDisabledReason() ||
+                this.t.gettext('Delete row'),
               click: (row: Record<string, unknown>) => void this.deleteRow(row),
             },
           ],
@@ -251,7 +281,24 @@ export class TaonSudoDataSqlBackofficeComponent {
 
   async deleteRow(row: Record<string, unknown>): Promise<void> {
     const entity = this.currentEntity();
-    if (!entity || !globalThis.confirm(this.t.gettext('Delete this row?'))) {
+    if (
+      !entity ||
+      !(await TaonSudoConfirmDialogComponent.confirm(this.dialog, {
+        title: this.t.gettext('Delete row'),
+        message: this.t.gettext(
+          'Delete this row from table [[ table ]]? This cannot be undone.',
+          { table: entity.tableName },
+        ),
+        details: [
+          ...this.sensitiveDetails(entity),
+          ...entity.primaryColumns.map(
+            column => `${column} = ${String(row[this.propertyFor(entity, column)])}`,
+          ),
+        ],
+        confirmLabel: this.t.gettext('Delete'),
+        destructive: true,
+      }))
+    ) {
       return;
     }
     this.loading.set(true);
@@ -267,6 +314,71 @@ export class TaonSudoDataSqlBackofficeComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async clearTable(): Promise<void> {
+    const entity = this.currentEntity();
+    const contextName = this.selectedContext();
+    if (!entity || !contextName) {
+      return;
+    }
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Clear table'),
+        message: this.t.gettext(
+          'All rows in table [[ table ]] (context [[ context ]]) will be permanently deleted. The table structure is kept.',
+          { table: entity.tableName, context: contextName },
+        ),
+        details: [
+          ...this.sensitiveDetails(entity),
+          this.t.gettext(
+            'Rows referenced by foreign keys in other tables can make this operation fail.',
+          ),
+        ],
+        confirmLabel: this.t.gettext('Clear table'),
+        destructive: true,
+        requiredPhrase: entity.tableName,
+      },
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.loading.set(true);
+    this.error.set('');
+    this.status.set('');
+    try {
+      const deleted = await this.api.clearSqlTable(contextName, entity.name);
+      this.status.set(
+        this.t.gettext('Table [[ table ]] cleared ([[ deleted ]] rows deleted).', {
+          table: entity.tableName,
+          deleted,
+        }),
+      );
+      this.page.set(0);
+      await this.loadRows();
+    } catch (error: unknown) {
+      this.reportError('Unable to clear SQL table.', error);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private sensitiveDetails(entity: TaonSudoSqlEntity): string[] {
+    return entity.sensitive
+      ? [
+          this.t.gettext(
+            'Warning: this is an operational table (migrations metadata). Changing it can cause migrations to run again or be skipped.',
+          ),
+        ]
+      : [];
+  }
+
+  private propertyFor(entity: TaonSudoSqlEntity, columnName: string): string {
+    return (
+      entity.columns.find(column => column.name === columnName)
+        ?.propertyName || columnName
+    );
   }
 
   private currentEntity(): TaonSudoSqlEntity | undefined {
@@ -306,6 +418,10 @@ export class TaonSudoDataSqlBackofficeComponent {
 
   private reportError(message: string, error: unknown): void {
     console.error(`[taon-sudo-data-sql-backoffice] ${message}`, error);
-    this.error.set(this.t.gettext(message));
+    const body = (error as { body?: { json?: { message?: string } } })?.body;
+    const details = body?.json?.message;
+    this.error.set(
+      details ? `${this.t.gettext(message)} ${details}` : this.t.gettext(message),
+    );
   }
 }

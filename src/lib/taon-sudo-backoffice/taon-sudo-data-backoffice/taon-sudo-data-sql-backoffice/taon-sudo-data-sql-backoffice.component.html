@@ -52,7 +52,34 @@
     (click)="loadRows()">
     {{ t.gettext('Reload') }}
   </button>
+  <button
+    mat-stroked-button
+    color="warn"
+    type="button"
+    [disabled]="loading() || !selectedEntity()"
+    (click)="clearTable()">
+    {{ t.gettext('Clear') }}
+  </button>
 </div>
+
+@if (selectedEntityInfo()?.sensitive) {
+  <p
+    role="note"
+    class="sql-warning">
+    {{
+      t.gettext(
+        'Warning: [[ table ]] is an operational migrations table. Editing or deleting rows can cause migrations to run again or be skipped.',
+        { table: selectedEntityInfo()?.tableName }
+      )
+    }}
+  </p>
+}
+@if (rowOperationsDisabledReason()) {
+  <p role="note">{{ rowOperationsDisabledReason() }}</p>
+}
+@if (status()) {
+  <p role="status">{{ status() }}</p>
+}
 
 @if (loading()) {
   <p role="status">{{ t.gettext('Loading SQL data...') }}</p>

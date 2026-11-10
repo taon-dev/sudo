@@ -1,4 +1,5 @@
 <main class="raw-migrations">
+  <!-- #region header -->
   <header>
     <h1>{{ t.gettext('Raw migrations') }}</h1>
     <p>
@@ -9,7 +10,9 @@
       }}
     </p>
   </header>
+  <!-- #endregion -->
 
+  <!-- #region toolbar -->
   <section class="toolbar">
     <label>
       {{ t.gettext('Context') }}
@@ -23,7 +26,9 @@
       </select>
     </label>
   </section>
+  <!-- #endregion -->
 
+  <!-- #region tabs -->
   <nav
     class="tabs"
     aria-label="Raw migration sections">
@@ -43,7 +48,9 @@
       {{ t.gettext('Restore') }}
     </button>
   </nav>
+  <!-- #endregion -->
 
+  <!-- #region busy status -->
   @if (busy()) {
     <p
       class="status"
@@ -51,7 +58,35 @@
       {{ statusMessage() }}
     </p>
   }
+  <!-- #endregion -->
 
+  <!-- #region upload progress -->
+  @if (uploadProgress() !== null) {
+    <section
+      class="job"
+      aria-live="polite">
+      <div class="job-heading">
+        <strong>{{ t.gettext('Uploading ZIP') }}</strong>
+        <span>{{ uploadProgress() }}%</span>
+      </div>
+
+      <mat-progress-bar
+        mode="determinate"
+        [value]="uploadProgress()">
+      </mat-progress-bar>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="action-btn warning"
+        (click)="cancelUpload()">
+        {{ t.gettext('Cancel upload') }}
+      </button>
+    </section>
+  }
+  <!-- #endregion -->
+
+  <!-- #region active job -->
   @if (activeJob(); as job) {
     <section
       class="job"
@@ -75,14 +110,16 @@
       @if (job.operation === 'create' && job.status === 'running') {
         <button
           type="button"
-          class="action-btn danger"
+          class="action-btn warning"
           (click)="stopSnapshot()">
           {{ t.gettext('Stop after current item') }}
         </button>
       }
     </section>
   }
+  <!-- #endregion -->
 
+  <!-- #region messages -->
   @if (errorMessage()) {
     <p
       class="error"
@@ -98,9 +135,12 @@
       {{ statusMessage() }}
     </p>
   }
+  <!-- #endregion -->
 
+  <!-- #region snapshot tab -->
   @if (activeTab() === 'snapshot') {
     <section class="snapshot-list">
+      <!-- #region snapshot heading -->
       <div class="section-heading">
         <div>
           <h2>{{ t.gettext('Snapshots') }}</h2>
@@ -117,7 +157,7 @@
           </button>
 
           <label
-            class="action-btn"
+            class="action-btn import"
             [class.disabled]="busy() || !selectedContext()">
             {{ t.gettext('Import ZIP') }}
 
@@ -129,63 +169,81 @@
           </label>
         </div>
       </div>
+      <!-- #endregion -->
 
+      <!-- #region snapshot table -->
       @if (snapshots().length === 0) {
-        <p>
+        <p class="empty-state">
           {{ t.gettext('No raw migration snapshots found for this context.') }}
         </p>
       } @else {
-        <table>
-          <thead>
-            <tr>
-              <th>{{ t.gettext('Name') }}</th>
-              <th>{{ t.gettext('Created') }}</th>
-              <th>{{ t.gettext('Actions') }}</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            @for (snapshot of snapshots(); track snapshot.id) {
+        <div class="table-wrapper">
+          <table>
+            <thead>
               <tr>
-                <td>
-                  <strong>{{ snapshot.name }}</strong>
-                  <small>
-                    {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
-                    {{ formatBytes(snapshot.totalBytes) }}
-                  </small>
-                </td>
-
-                <td>{{ snapshot.createdAt | date: 'medium' }}</td>
-
-                <td>
-                  <div class="snapshot-actions">
-                    <a
-                      class="action-btn"
-                      [href]="exportUrl(snapshot)"
-                      download>
-                      {{ t.gettext('Export ZIP') }}
-                    </a>
-
-                    <button
-                      type="button"
-                      class="action-btn danger"
-                      [disabled]="busy()"
-                      (click)="deleteSnapshot(snapshot)">
-                      {{ t.gettext('Delete') }}
-                    </button>
-                  </div>
-                </td>
+                <th>{{ t.gettext('Name') }}</th>
+                <th>{{ t.gettext('Created') }}</th>
+                <th>{{ t.gettext('Actions') }}</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      }
-    </section>
-  } @else {
-    <section class="snapshot-list">
-      <h2>{{ t.gettext('Restore snapshot') }}</h2>
-      <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
+            </thead>
 
+            <tbody>
+              @for (snapshot of snapshots(); track snapshot.id) {
+                <tr>
+                  <td>
+                    <strong>{{ snapshot.name }}</strong>
+                    <small>
+                      {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
+                      {{ formatBytes(snapshot.totalBytes) }}
+                    </small>
+                  </td>
+
+                  <td>
+                    {{ snapshot.createdAt | date: 'medium' }}
+                  </td>
+
+                  <td>
+                    <div class="snapshot-actions">
+                      <a
+                        class="action-btn export"
+                        [href]="exportUrl(snapshot)"
+                        download>
+                        {{ t.gettext('Export ZIP') }}
+                      </a>
+
+                      <button
+                        type="button"
+                        class="action-btn danger"
+                        [disabled]="busy()"
+                        (click)="deleteSnapshot(snapshot)">
+                        {{ t.gettext('Delete') }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <!-- #endregion -->
+    </section>
+  }
+  <!-- #endregion -->
+
+  <!-- #region restore tab -->
+  @else {
+    <section class="snapshot-list">
+      <!-- #region restore heading -->
+      <div class="section-heading">
+        <div>
+          <h2>{{ t.gettext('Restore snapshot') }}</h2>
+          <p>{{ t.gettext('Context') }}: {{ selectedContext() }}</p>
+        </div>
+      </div>
+      <!-- #endregion -->
+
+      <!-- #region clear data option -->
       <label class="clear-data-option">
         <input
           type="checkbox"
@@ -197,51 +255,60 @@
           {{ t.gettext('Clear all data before restore') }}
         </span>
       </label>
+      <!-- #endregion -->
 
+      <!-- #region restore table -->
       @if (snapshots().length === 0) {
-        <p>
+        <p class="empty-state">
           {{ t.gettext('No raw migration snapshots found for this context.') }}
         </p>
       } @else {
-        <table>
-          <thead>
-            <tr>
-              <th>{{ t.gettext('Name') }}</th>
-              <th>{{ t.gettext('Created') }}</th>
-              <th>{{ t.gettext('Actions') }}</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            @for (snapshot of snapshots(); track snapshot.id) {
+        <div class="table-wrapper">
+          <table>
+            <thead>
               <tr>
-                <td>
-                  <strong>{{ snapshot.name }}</strong>
-                  <small>
-                    {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
-                    {{ formatBytes(snapshot.totalBytes) }}
-                  </small>
-                </td>
-
-                <td>{{ snapshot.createdAt | date: 'medium' }}</td>
-
-                <td>
-                  <button
-                    type="button"
-                    class="action-btn primary"
-                    [disabled]="busy()"
-                    (click)="restoreSnapshot(snapshot)">
-                    {{ t.gettext('Restore') }}
-                  </button>
-                </td>
+                <th>{{ t.gettext('Name') }}</th>
+                <th>{{ t.gettext('Created') }}</th>
+                <th>{{ t.gettext('Actions') }}</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              @for (snapshot of snapshots(); track snapshot.id) {
+                <tr>
+                  <td>
+                    <strong>{{ snapshot.name }}</strong>
+                    <small>
+                      {{ snapshot.totalFiles }} {{ t.gettext('files') }} ·
+                      {{ formatBytes(snapshot.totalBytes) }}
+                    </small>
+                  </td>
+
+                  <td>
+                    {{ snapshot.createdAt | date: 'medium' }}
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      class="action-btn restore"
+                      [disabled]="busy()"
+                      (click)="restoreSnapshot(snapshot)">
+                      {{ t.gettext('Restore') }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
+      <!-- #endregion -->
     </section>
   }
+  <!-- #endregion -->
 
+  <!-- #region create snapshot dialog -->
   @if (createDialogOpen()) {
     <div
       class="dialog-backdrop"
@@ -254,6 +321,7 @@
         (submit)="createSnapshot($event)">
         <h2>{{ t.gettext('Create snapshot') }}</h2>
 
+        <!-- #region dialog context -->
         <mat-form-field appearance="outline">
           <mat-label>{{ t.gettext('Context') }}</mat-label>
 
@@ -267,7 +335,9 @@
             }
           </mat-select>
         </mat-form-field>
+        <!-- #endregion -->
 
+        <!-- #region dialog snapshot name -->
         <mat-form-field appearance="outline">
           <mat-label>{{ t.gettext('Snapshot name') }}</mat-label>
 
@@ -280,11 +350,13 @@
             [value]="snapshotName()"
             (input)="setSnapshotName($event)" />
         </mat-form-field>
+        <!-- #endregion -->
 
+        <!-- #region dialog actions -->
         <div class="dialog-actions">
           <button
             type="button"
-            class="action-btn"
+            class="action-btn secondary"
             (click)="closeCreateDialog()">
             {{ t.gettext('Cancel') }}
           </button>
@@ -295,9 +367,13 @@
             {{ t.gettext('Create snapshot') }}
           </button>
         </div>
+        <!-- #endregion -->
       </form>
     </div>
   }
+  <!-- #endregion -->
 
+  <!-- #region router outlet -->
   <router-outlet></router-outlet>
+  <!-- #endregion -->
 </main>

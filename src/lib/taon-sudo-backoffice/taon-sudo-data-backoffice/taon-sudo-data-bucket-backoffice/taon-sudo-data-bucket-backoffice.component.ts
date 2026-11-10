@@ -1,17 +1,29 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  Injector,
+  computed,
   inject,
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { MtxGridColumn } from '@ng-matero/extensions/grid';
-import { TaonDatatableComponent } from '@taon-dev/ui/src';
 import { Translation } from '@taon-dev/i18n/src';
+import { TaonDatatableComponent } from '@taon-dev/ui/src';
+import { firstValueFrom } from 'rxjs';
 import { Taon, TaonStorageObject } from 'taon/src';
 
 import { TaonSudoApiService } from '../../../taon-sudo/taon-sudo.api.service';
+import { TaonSudoUtils } from '../../../taon-sudo/taon-sudo.utils';
+import { TaonSudoConfirmDialogComponent } from '../../taon-sudo-confirm-dialog.component';
+
+import { TaonSudoBucketAssetPreviewComponent } from './taon-sudo-bucket-asset-preview.component';
+import {
+  TaonSudoBucketUploadDialogComponent,
+  TaonSudoBucketUploadDialogData,
+} from './taon-sudo-bucket-upload-dialog.component';
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
 
@@ -20,27 +32,57 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
   templateUrl: './taon-sudo-data-bucket-backoffice.component.html',
   styleUrls: ['./taon-sudo-data-bucket-backoffice.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatSelectModule, TaonDatatableComponent],
+  imports: [
+    MatButtonModule,
+    MatSelectModule,
+    TaonDatatableComponent,
+    TaonSudoBucketAssetPreviewComponent,
+  ],
   providers: [TaonSudoApiService],
 })
 export class TaonSudoDataBucketBackofficeComponent {
   readonly t = t.for(this);
+
   readonly contexts = signal<string[]>([]);
+
   readonly storageControllers = signal<string[]>([]);
+
   readonly files = signal<TaonStorageObject[]>([]);
+
   readonly selectedContext = signal('');
+
   readonly selectedController = signal('');
+
   readonly loading = signal(false);
+
   readonly error = signal('');
+
+  readonly status = signal('');
+
+  /**
+   * Table rows (size formatted for humans, raw size kept for sorting/preview).
+   */
+  readonly rows = computed(() =>
+    this.files().map(file => ({
+      ...file,
+      sizeLabel: TaonSudoUtils.formatBytes(file.size),
+    })),
+  );
+
   readonly columns: MtxGridColumn[] = [
-    { header: this.t.gettext('Key'), field: 'key', sortable: true },
+    {
+      header: this.t.gettext('Key'),
+      field: 'key',
+      sortable: true,
+      showExpand: true,
+    },
     { header: this.t.gettext('File Name'), field: 'fileName', sortable: true },
     {
       header: this.t.gettext('Content Type'),
       field: 'contentType',
       sortable: true,
     },
-    { header: this.t.gettext('Size'), field: 'size', sortable: true },
+    { header: this.t.gettext('Size'), field: 'sizeLabel' },
     {
       header: this.t.gettext('Actions'),
       field: 'actions',
@@ -48,9 +90,9 @@ export class TaonSudoDataBucketBackofficeComponent {
       buttons: [
         {
           type: 'icon',
-          icon: 'visibility',
-          tooltip: this.t.gettext('Preview'),
-          click: (file: TaonStorageObject) => this.preview(file),
+          icon: 'swap_horiz',
+          tooltip: this.t.gettext('Replace'),
+          click: (file: TaonStorageObject) => void this.replace(file),
         },
         {
           type: 'icon',
@@ -69,6 +111,10 @@ export class TaonSudoDataBucketBackofficeComponent {
   ];
 
   private readonly api = inject(TaonSudoApiService);
+
+  private readonly dialog = inject(MatDialog);
+
+  private readonly injector = inject(Injector);
 
   constructor() {
     void this.initialize();
@@ -147,39 +193,168 @@ export class TaonSudoDataBucketBackofficeComponent {
     }
   }
 
-  async upload(event: Event): Promise<void> {
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement)) {
-      return;
-    }
-    const file = input.files?.[0];
-    if (!file) {
-      return;
-    }
-    this.loading.set(true);
-    this.error.set('');
-    try {
-      await this.api.uploadBucketFile(
-        this.selectedContext(),
-        this.selectedController(),
-        file,
+  async uploadNew(): Promise<void> {
+    const result = await this.openUploadDialog({
+      mode: 'upload',
+      contextName: this.selectedContext(),
+      controllerName: this.selectedController(),
+    });
+    if (result) {
+      this.status.set(
+        this.t.gettext('Asset [[ key ]] uploaded.', { key: result.key }),
       );
       await this.reload();
-    } catch (error: unknown) {
-      this.fail('Unable to upload or replace the bucket file.', error);
-    } finally {
-      input.value = '';
-      this.loading.set(false);
     }
   }
 
-  preview(file: TaonStorageObject): void {
-    const url = this.api.getBucketFileUrl(
-      this.selectedContext(),
-      this.selectedController(),
-      file.key,
+  async replace(file: TaonStorageObject): Promise<void> {
+    const result = await this.openUploadDialog({
+      mode: 'replace',
+      contextName: this.selectedContext(),
+      controllerName: this.selectedController(),
+      existing: file,
+    });
+    if (result) {
+      this.status.set(
+        this.t.gettext('Asset [[ key ]] replaced.', { key: result.key }),
+      );
+      await this.reload();
+    }
+  }
+
+  private openUploadDialog(
+    data: TaonSudoBucketUploadDialogData,
+  ): Promise<TaonStorageObject | undefined> {
+    if (!data.contextName || !data.controllerName) {
+      return Promise.resolve(undefined);
+    }
+    const ref = this.dialog.open<
+      TaonSudoBucketUploadDialogComponent,
+      TaonSudoBucketUploadDialogData,
+      TaonStorageObject | undefined
+    >(TaonSudoBucketUploadDialogComponent, {
+      data,
+      width: '640px',
+      maxWidth: '95vw',
+      // dialog needs the component level TaonSudoApiService provider
+      injector: this.injector,
+    });
+    return firstValueFrom(ref.afterClosed());
+  }
+
+  async clearBucket(): Promise<void> {
+    const contextName = this.selectedContext();
+    const controllerName = this.selectedController();
+    if (!contextName || !controllerName) {
+      return;
+    }
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Clear bucket'),
+        message: this.t.gettext(
+          'All objects in bucket [[ bucket ]] (context [[ context ]]) will be permanently deleted. The bucket itself is kept.',
+          { bucket: controllerName, context: contextName },
+        ),
+        confirmLabel: this.t.gettext('Clear'),
+        destructive: true,
+      },
     );
-    globalThis.open(url, '_blank', 'noopener,noreferrer');
+    if (confirmed) {
+      await this.clear(contextName, [controllerName]);
+    }
+  }
+
+  async clearAll(): Promise<void> {
+    const contextName = this.selectedContext();
+    const controllers = this.storageControllers();
+    if (!contextName || !controllers.length) {
+      return;
+    }
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Clear ALL buckets'),
+        message: this.t.gettext(
+          'Objects from ALL [[ count ]] buckets of context [[ context ]] will be permanently deleted. Bucket definitions are kept.',
+          { count: controllers.length, context: contextName },
+        ),
+        details: [controllers.join(', ')],
+        confirmLabel: this.t.gettext('Clear All'),
+        destructive: true,
+        requiredPhrase: contextName,
+      },
+    );
+    if (confirmed) {
+      await this.clear(contextName, controllers);
+    }
+  }
+
+  private async clear(
+    contextName: string,
+    controllers: string[],
+  ): Promise<void> {
+    this.loading.set(true);
+    this.error.set('');
+    this.status.set('');
+    const failures: string[] = [];
+    let deletedTotal = 0;
+    try {
+      for (const controllerName of controllers) {
+        let deleted = 0;
+        let failed = 0;
+        try {
+          // batches of objects until the backend reports completion
+          for (;;) {
+            const batch = await this.api.clearBucketBatch(
+              contextName,
+              controllerName,
+            );
+            deleted += batch.deleted;
+            failed += batch.failed;
+            this.status.set(
+              this.t.gettext(
+                'Clearing [[ bucket ]]... [[ deleted ]] objects deleted.',
+                { bucket: controllerName, deleted },
+              ),
+            );
+            if (batch.done) {
+              break;
+            }
+          }
+        } catch (error: unknown) {
+          console.error(
+            `[taon-sudo-data-bucket-backoffice] Clear failed for ${controllerName}`,
+            error,
+          );
+          failures.push(`${controllerName} (${this.errorMessage(error)})`);
+        }
+        if (failed) {
+          failures.push(
+            this.t.gettext('[[ bucket ]] ([[ failed ]] objects not deleted)', {
+              bucket: controllerName,
+              failed,
+            }),
+          );
+        }
+        deletedTotal += deleted;
+      }
+      this.status.set(
+        this.t.gettext('[[ deleted ]] objects deleted.', {
+          deleted: deletedTotal,
+        }),
+      );
+      if (failures.length) {
+        this.error.set(
+          this.t.gettext('Some buckets were not fully cleared: [[ list ]]', {
+            list: failures.join('; '),
+          }),
+        );
+      }
+    } finally {
+      this.loading.set(false);
+    }
+    await this.reload();
   }
 
   download(file: TaonStorageObject): void {
@@ -195,9 +370,23 @@ export class TaonSudoDataBucketBackofficeComponent {
   }
 
   async remove(file: TaonStorageObject): Promise<void> {
-    if (
-      !globalThis.confirm(this.t.gettext(`Delete bucket file "${file.key}"?`))
-    ) {
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Delete file'),
+        message: this.t.gettext(
+          'Delete [[ key ]] ([[ size ]]) from bucket [[ bucket ]]?',
+          {
+            key: file.key,
+            size: TaonSudoUtils.formatBytes(file.size),
+            bucket: this.selectedController(),
+          },
+        ),
+        confirmLabel: this.t.gettext('Delete'),
+        destructive: true,
+      },
+    );
+    if (!confirmed) {
       return;
     }
     this.loading.set(true);
@@ -213,6 +402,14 @@ export class TaonSudoDataBucketBackofficeComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private errorMessage(error: unknown): string {
+    const body = (error as { body?: { json?: { message?: string } } })?.body;
+    return (
+      body?.json?.message ||
+      (error instanceof Error ? error.message : String(error))
+    );
   }
 
   private fail(message: string, error: unknown): void {

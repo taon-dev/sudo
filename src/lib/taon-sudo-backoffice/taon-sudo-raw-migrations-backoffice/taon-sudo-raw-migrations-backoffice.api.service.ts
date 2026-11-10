@@ -7,12 +7,17 @@ import {
   TaonSudoRawMigrationSummary,
 } from '../../taon-sudo/taon-sudo-raw-migration.models';
 import { TaonSudoRawMigrationController } from '../../taon-sudo/taon-sudo-raw-migration.controller';
+import { TaonSudoUploadStorageController } from '../../taon-sudo/taon-sudo-upload-storage.controller';
 //#endregion
 
 @Injectable()
 export class TaonSudoRawMigrationsBackofficeApiService extends TaonBaseAngularService {
   private readonly controller = this.injectController(
     TaonSudoRawMigrationController,
+  );
+
+  private readonly uploadController = this.injectController(
+    TaonSudoUploadStorageController,
   );
 
   getContexts(): Promise<string[]> {
@@ -60,15 +65,36 @@ export class TaonSudoRawMigrationsBackofficeApiService extends TaonBaseAngularSe
     );
   }
 
-  importSnapshot(
+  /**
+   * Uploads the ZIP in chunks (Taon multipart upload, constant memory usage)
+   * and then imports it on the backend.
+   */
+  async importSnapshot(
     contextName: string,
     file: File,
     name: string,
+    options: {
+      signal?: AbortSignal;
+      onProgress?: (percentage: number) => void;
+      onUploaded?: () => void;
+    } = {},
   ): Promise<TaonSudoRawMigrationSummary> {
-    const formData = new FormData();
-    formData.append('file', file);
+    const [uploaded] = await this.uploadController.uploadFileInChunks(file, {
+      fileName: file.name,
+      contentType: file.type || 'application/zip',
+      signal: options.signal,
+      onProgress: options.onProgress,
+    });
+    if (!uploaded?.key) {
+      throw new Error('The raw migration ZIP upload did not complete.');
+    }
+    options.onUploaded?.();
     return this.json(
-      this.controller.importRawMigrationSnapshot(contextName, name, formData),
+      this.controller.importRawMigrationSnapshotFromUpload(
+        contextName,
+        name,
+        uploaded.key,
+      ),
     );
   }
 

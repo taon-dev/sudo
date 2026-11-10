@@ -1,0 +1,101 @@
+msgid ""
+msgstr ""
+"Language: pl-PL\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:5
+msgid "Replace Asset"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:5
+msgid "Upload New Asset"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:9
+msgid "Context"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:11
+msgid "Target bucket"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:17
+msgid "Existing asset"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:19
+msgid "Key / path"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:21
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:56
+msgid "File Name"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:23
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:58
+msgid "Size"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:29
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:30
+msgid "The existing asset will be overwritten. Its key/path is kept."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:40
+msgid "Replacement file"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:40
+msgid "File"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:47
+msgid "Select file"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:60
+msgid "Content Type"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:64
+msgid "No file selected."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:72
+msgid "Target key / path"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:79
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:80
+msgid "An existing asset with the same key is never overwritten - use Replace instead."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:95
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:97
+msgid "Saving to bucket..."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:95
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:98
+msgid "Uploading... [[ progress ]]%"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:119
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:121
+msgid "Cancel upload"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:119
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:122
+msgid "Cancel"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:131
+msgid "Start Replace"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.html:131
+msgid "Start Upload"
+msgstr ""

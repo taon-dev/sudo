@@ -1,0 +1,133 @@
+<h2
+  mat-dialog-title
+  cdkDrag
+  cdkDragRootElement=".cdk-overlay-pane">
+  {{ isReplace ? t.gettext('Replace Asset') : t.gettext('Upload New Asset') }}
+</h2>
+<mat-dialog-content>
+  <dl class="upload-meta">
+    <dt>{{ t.gettext('Context') }}</dt>
+    <dd>{{ data.contextName }}</dd>
+    <dt>{{ t.gettext('Target bucket') }}</dt>
+    <dd>{{ data.controllerName }}</dd>
+  </dl>
+
+  @if (isReplace && data.existing) {
+    <section class="upload-section">
+      <h3>{{ t.gettext('Existing asset') }}</h3>
+      <dl class="upload-meta">
+        <dt>{{ t.gettext('Key / path') }}</dt>
+        <dd>{{ data.existing.key }}</dd>
+        <dt>{{ t.gettext('File Name') }}</dt>
+        <dd>{{ data.existing.fileName || '-' }}</dd>
+        <dt>{{ t.gettext('Size') }}</dt>
+        <dd>{{ formatBytes(data.existing.size) }}</dd>
+      </dl>
+      <p
+        class="upload-warning"
+        role="note">
+        {{
+          t.gettext(
+            'The existing asset will be overwritten. Its key/path is kept.'
+          )
+        }}
+      </p>
+    </section>
+  }
+
+  <section class="upload-section">
+    <h3>
+      {{ isReplace ? t.gettext('Replacement file') : t.gettext('File') }}
+    </h3>
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="busy()"
+      (click)="fileInput.click()">
+      {{ t.gettext('Select file') }}
+    </button>
+    <input
+      #fileInput
+      hidden
+      type="file"
+      (change)="fileSelected($event)" />
+    @if (file(); as selected) {
+      <dl class="upload-meta">
+        <dt>{{ t.gettext('File Name') }}</dt>
+        <dd>{{ selected.name }}</dd>
+        <dt>{{ t.gettext('Size') }}</dt>
+        <dd>{{ formatBytes(selected.size) }}</dd>
+        <dt>{{ t.gettext('Content Type') }}</dt>
+        <dd>{{ selected.type || 'application/octet-stream' }}</dd>
+      </dl>
+    } @else {
+      <p>{{ t.gettext('No file selected.') }}</p>
+    }
+  </section>
+
+  @if (!isReplace) {
+    <mat-form-field
+      appearance="outline"
+      class="upload-key">
+      <mat-label>{{ t.gettext('Target key / path') }}</mat-label>
+      <input
+        matInput
+        autocomplete="off"
+        [value]="targetKey()"
+        [disabled]="busy()"
+        (input)="keyChanged($event)" />
+      <mat-hint>{{
+        t.gettext(
+          'An existing asset with the same key is never overwritten - use Replace instead.'
+        )
+      }}</mat-hint>
+    </mat-form-field>
+  }
+
+  @if (phase() === 'uploading' || phase() === 'saving') {
+    <div
+      class="upload-progress"
+      role="status">
+      <mat-progress-bar
+        [mode]="phase() === 'saving' ? 'indeterminate' : 'determinate'"
+        [value]="progress()"></mat-progress-bar>
+      <span>
+        {{
+          phase() === 'saving'
+            ? t.gettext('Saving to bucket...')
+            : t.gettext('Uploading... [[ progress ]]%', {
+                progress: progress(),
+              })
+        }}
+      </span>
+    </div>
+  }
+  @if (message()) {
+    <p
+      [attr.role]="phase() === 'error' ? 'alert' : 'status'"
+      [class.upload-error]="phase() === 'error'">
+      {{ message() }}
+    </p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button
+    mat-button
+    type="button"
+    [disabled]="phase() === 'saving'"
+    (click)="cancel()">
+    {{
+      phase() === 'uploading'
+        ? t.gettext('Cancel upload')
+        : t.gettext('Cancel')
+    }}
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    [color]="isReplace ? 'warn' : 'primary'"
+    [disabled]="!canStart()"
+    (click)="start()">
+    {{ isReplace ? t.gettext('Start Replace') : t.gettext('Start Upload') }}
+  </button>
+</mat-dialog-actions>

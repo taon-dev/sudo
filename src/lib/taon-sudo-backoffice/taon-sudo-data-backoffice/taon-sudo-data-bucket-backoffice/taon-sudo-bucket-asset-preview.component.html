@@ -1,0 +1,107 @@
+@if (loading()) {
+  <p role="status">{{ t.gettext('Loading preview...') }}</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+
+@if (needsManualLoad()) {
+  <p>
+    {{
+      t.gettext(
+        'This file is large ([[ size ]]). The preview is not loaded automatically.',
+        { size: formatBytes(asset.size) }
+      )
+    }}
+  </p>
+  <button
+    mat-stroked-button
+    type="button"
+    (click)="loadPreview()">
+    {{ t.gettext('Load preview') }}
+  </button>
+} @else {
+  @switch (kind()) {
+    @case ('image') {
+      @if (url()) {
+        <img
+          class="preview-media"
+          loading="lazy"
+          [src]="url()"
+          [alt]="asset.fileName || asset.key"
+          (error)="mediaError()" />
+      }
+    }
+    @case ('video') {
+      @if (url()) {
+        <video
+          class="preview-media"
+          controls
+          preload="metadata"
+          [src]="url()"
+          (error)="mediaError()">
+          {{ t.gettext('Your browser does not support video playback.') }}
+        </video>
+      }
+    }
+    @case ('audio') {
+      @if (url()) {
+        <audio
+          class="preview-audio"
+          controls
+          preload="metadata"
+          [src]="url()"
+          (error)="mediaError()">
+          {{ t.gettext('Your browser does not support audio playback.') }}
+        </audio>
+      }
+    }
+    @case ('pdf') {
+      @if (pdfUrl()) {
+        <iframe
+          class="preview-pdf"
+          [src]="pdfUrl()"
+          [title]="asset.fileName || asset.key"></iframe>
+      }
+    }
+    @case ('text') {
+      @if (!loading() && !error()) {
+        <pre class="preview-text">{{ text() }}</pre>
+      }
+    }
+    @case ('rtf') {
+      @if (!loading() && !error()) {
+        <pre class="preview-text">{{ text() }}</pre>
+      }
+    }
+    @default {
+      <p>{{ t.gettext('No preview available for this file type.') }}</p>
+    }
+  }
+  @if (textTruncated()) {
+    <p class="preview-note">
+      {{
+        t.gettext('Only the first [[ size ]] are shown.', {
+          size: formatBytes(textPreviewLimit),
+        })
+      }}
+    </p>
+  }
+}
+
+<dl class="preview-meta">
+  <dt>{{ t.gettext('Key') }}</dt>
+  <dd>{{ asset.key }}</dd>
+  <dt>{{ t.gettext('File Name') }}</dt>
+  <dd>{{ asset.fileName || '-' }}</dd>
+  <dt>{{ t.gettext('Content Type') }}</dt>
+  <dd>{{ asset.contentType || '-' }}</dd>
+  <dt>{{ t.gettext('Size') }}</dt>
+  <dd>{{ formatBytes(asset.size) }}</dd>
+</dl>
+<button
+  mat-stroked-button
+  type="button"
+  (click)="download()">
+  {{ t.gettext('Download') }}
+</button>

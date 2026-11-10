@@ -17,14 +17,22 @@ msgstr ""
 msgid "Storage Controllers (found [[ length ]])"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:36
-msgid "Upload / Replace"
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:41
+msgid "Upload New Asset"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:47
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:48
 msgid "Reload"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:52
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:56
+msgid "Clear"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:64
+msgid "Clear All"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-data-bucket-backoffice.component.html:69
 msgid "Loading bucket files..."
 msgstr ""

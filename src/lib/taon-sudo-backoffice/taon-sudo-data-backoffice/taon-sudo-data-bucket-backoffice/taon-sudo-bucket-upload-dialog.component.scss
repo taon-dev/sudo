@@ -1,0 +1,34 @@
+.upload-section {
+  margin: 0.75rem 0;
+}
+.upload-section h3 {
+  margin: 0 0 0.5rem;
+}
+.upload-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0;
+  word-break: break-all;
+}
+.upload-meta dt {
+  font-weight: 500;
+}
+.upload-meta dd {
+  margin: 0;
+}
+.upload-key {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+.upload-warning,
+.upload-error {
+  color: var(--mat-sys-error, #b3261e);
+  font-weight: 500;
+}

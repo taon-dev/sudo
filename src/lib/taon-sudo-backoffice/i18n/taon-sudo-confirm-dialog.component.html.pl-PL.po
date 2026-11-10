@@ -1,0 +1,22 @@
+msgid ""
+msgstr ""
+"Language: pl-PL\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-confirm-dialog.component.html:18
+#: src/lib/taon-sudo-backoffice/taon-sudo-confirm-dialog.component.html:19
+msgid "Type [[ phrase ]] to confirm."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-confirm-dialog.component.html:27
+msgid "Confirmation"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-confirm-dialog.component.html:41
+msgid "Cancel"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-confirm-dialog.component.html:49
+msgid "Confirm"
+msgstr ""

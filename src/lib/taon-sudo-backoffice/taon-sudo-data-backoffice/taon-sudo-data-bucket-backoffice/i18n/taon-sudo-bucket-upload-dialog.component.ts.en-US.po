@@ -1,0 +1,25 @@
+msgid ""
+msgstr ""
+"Language: en-US\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.ts:159
+msgid "Asset replaced successfully."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.ts:160
+msgid "Asset uploaded successfully."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.ts:166
+msgid "Upload cancelled."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.ts:203
+msgid "Upload failed: [[ message ]]"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-bucket-backoffice/taon-sudo-bucket-upload-dialog.component.ts:204
+msgid "Upload failed. Please try again."
+msgstr ""

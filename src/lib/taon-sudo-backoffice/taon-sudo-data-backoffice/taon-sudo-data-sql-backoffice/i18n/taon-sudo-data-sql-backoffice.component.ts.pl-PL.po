@@ -4,18 +4,48 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:170
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:90
+msgid "This table has no primary key, so edit and delete are disabled."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:197
 msgid "Actions"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:179
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:207
 msgid "Edit row"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:187
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:217
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:287
 msgid "Delete row"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:254
-msgid "Delete this row?"
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:288
+msgid "Delete this row from table [[ table ]]? This cannot be undone."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:298
+msgid "Delete"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:328
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:339
+msgid "Clear table"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:329
+msgid "All rows in table [[ table ]] (context [[ context ]]) will be permanently deleted. The table structure is kept."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:335
+msgid "Rows referenced by foreign keys in other tables can make this operation fail."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:353
+msgid "Table [[ table ]] cleared ([[ deleted ]] rows deleted)."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.ts:370
+msgid "Warning: this is an operational table (migrations metadata). Changing it can cause migrations to run again or be skipped."
 msgstr ""

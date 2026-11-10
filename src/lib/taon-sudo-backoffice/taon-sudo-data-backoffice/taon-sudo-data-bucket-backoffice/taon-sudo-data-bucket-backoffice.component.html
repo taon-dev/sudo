@@ -32,19 +32,36 @@
     </mat-select>
   </mat-form-field>
 
-  <label class="upload-control">
-    <span>{{ t.gettext('Upload / Replace') }}</span>
-    <input
-      type="file"
-      [disabled]="loading() || !selectedController()"
-      (change)="upload($event)" />
-  </label>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    [disabled]="loading() || !selectedController()"
+    (click)="uploadNew()">
+    {{ t.gettext('Upload New Asset') }}
+  </button>
   <button
     mat-button
     type="button"
     [disabled]="loading() || !selectedController()"
     (click)="reload()">
     {{ t.gettext('Reload') }}
+  </button>
+  <button
+    mat-stroked-button
+    color="warn"
+    type="button"
+    [disabled]="loading() || !selectedController()"
+    (click)="clearBucket()">
+    {{ t.gettext('Clear') }}
+  </button>
+  <button
+    mat-flat-button
+    color="warn"
+    type="button"
+    [disabled]="loading() || !storageControllers().length"
+    (click)="clearAll()">
+    {{ t.gettext('Clear All') }}
   </button>
 </div>
 
@@ -54,11 +71,24 @@
 @if (error()) {
   <p role="alert">{{ error() }}</p>
 }
+@if (status()) {
+  <p role="status">{{ status() }}</p>
+}
+
+<ng-template
+  #preview
+  let-asset>
+  <taon-sudo-bucket-asset-preview
+    [asset]="asset"
+    [contextName]="selectedContext()"
+    [controllerName]="selectedController()" />
+</ng-template>
 
 <taon-datatable
-  [data]="files()"
+  [data]="rows()"
   [columns]="columns"
-  [allowedColumns]="['key', 'fileName', 'contentType', 'size']"
+  [allowedColumns]="['key', 'fileName', 'contentType', 'sizeLabel']"
   [hideAddButton]="true"
+  [expansionTemplate]="preview"
   searchMode="advanced">
 </taon-datatable>

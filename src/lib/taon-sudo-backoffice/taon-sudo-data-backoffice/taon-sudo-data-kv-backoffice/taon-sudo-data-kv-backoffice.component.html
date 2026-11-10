@@ -47,10 +47,29 @@
     (click)="reload()">
     {{ t.gettext('Reload') }}
   </button>
+  <button
+    mat-stroked-button
+    color="warn"
+    type="button"
+    [disabled]="loading() || !selectedRepository()"
+    (click)="clearRepository()">
+    {{ t.gettext('Clear') }}
+  </button>
+  <button
+    mat-flat-button
+    color="warn"
+    type="button"
+    [disabled]="loading() || !repositories().length"
+    (click)="clearAll()">
+    {{ t.gettext('Clear All') }}
+  </button>
 </div>
 
 @if (loading()) {
   <p role="status">{{ t.gettext('Loading KV data...') }}</p>
+}
+@if (status()) {
+  <p role="status">{{ status() }}</p>
 }
 @if (error()) {
   <p role="alert">{{ error() }}</p>

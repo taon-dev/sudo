@@ -26,4 +26,26 @@ export namespace TaonSudoUtils {
     return !controllerName.startsWith('TaonSudo');
   }
   //#endregion
+
+  //#region format bytes
+  /**
+   * Human readable size, e.g. 123 B, 12 KB, 100 MB, 1.4 GB (1024 based).
+   */
+  export function formatBytes(bytes: number | undefined | null): string {
+    const value = Number(bytes);
+    if (!Number.isFinite(value) || value < 0) {
+      return '-';
+    }
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    const precision = unitIndex === 0 || size >= 10 ? 0 : 1;
+    const formatted = size.toFixed(precision).replace(/\.0$/, '');
+    return `${formatted} ${units[unitIndex]}`;
+  }
+  //#endregion
 }

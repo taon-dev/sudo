@@ -5,6 +5,7 @@ import {
   TaonSessionProvider,
   TaonSessionRepository,
 } from '@taon-dev/session/src';
+import { FetchResponseType } from 'ng2-rest/src';
 import {
   Taon,
   ClassHelpers,
@@ -28,11 +29,12 @@ import {
   TAON_MIGRATION_META_TABLE_NAME,
 } from 'taon/src';
 import type { EntityMetadata, Repository } from 'taon-typeorm/src';
-import { FetchResponseType } from 'ng2-rest/src';
+import { UtilsOs } from 'tnp-core/src';
 
+import { TaonSudoUploadStorageController } from './taon-sudo-upload-storage.controller';
+import { TaonSudoModels } from './taon-sudo.models';
 import { TaonSudoRepository } from './taon-sudo.repository';
 import { TaonSudoUtils } from './taon-sudo.utils';
-import { TaonSudoModels } from './taon-sudo.models';
 //#endregion
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
@@ -59,6 +61,10 @@ export class TaonSudoController extends TaonBaseController<
 
   protected readonly taonSessionProvider =
     this.injectProvider(TaonSessionProvider);
+
+  protected readonly uploadStorageController = this.injectController(
+    TaonSudoUploadStorageController,
+  );
 
   get allContextsName(): string[] {
     return this.allContexts?.map(c => c.contextName) || [];
@@ -90,6 +96,8 @@ export class TaonSudoController extends TaonBaseController<
     data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoController>,
   ): Promise<void> {
     if (this.taonSessionProvider.isLocalhost) {
+      // QUICK_FIX so I can have easy raw migrations on localhost
+      data.req.userId = Number.MAX_SAFE_INTEGER;
       return;
     }
     await this.taonSessionRepository.throwIfNotAuthenticated(data);
@@ -263,7 +271,7 @@ export class TaonSudoController extends TaonBaseController<
     //#region @backendFunc
     return async () =>
       this.allContexts
-        .filter(context => !!context.connection?.entityMetadatas.length)
+        .filter(context => !!context.connection)
         .map(context => context.contextName);
     //#endregion
   }
@@ -271,21 +279,9 @@ export class TaonSudoController extends TaonBaseController<
 
   //#region methods / get sql entities
   @GET()
-  getSqlEntities(@Query('contextName') contextName: string): Taon.Response<
-    {
-      name: string;
-      tableName: string;
-      columns: {
-        name: string;
-        propertyName: string;
-        type: string;
-        primary: boolean;
-        generated: boolean;
-        nullable: boolean;
-      }[];
-      primaryColumns: string[];
-    }[]
-  > {
+  getSqlEntities(
+    @Query('contextName') contextName: string,
+  ): Taon.Response<TaonSudoModels.SqlTable[]> {
     //#region @backendFunc
     return async () => {
       const context = this.getContext(contextName);
@@ -300,51 +296,75 @@ export class TaonSudoController extends TaonBaseController<
       //     .getClassFunByArr(Models.ClassType.ENTITY)
       //     .map(classFn => ClassHelpers.getName(classFn)),
       // );
-      const sqlTables = context.connection.entityMetadatas
-        // .filter(metadata => registeredEntityNames.has(metadata.name))
-        .map(metadata => ({
-          name: metadata.name,
-          tableName: metadata.tableName,
-          columns: metadata.columns
-            .filter(column => !column.isVirtual && !column.isVirtualProperty)
-            .map(column => ({
-              name: column.databaseName,
-              propertyName: column.propertyName,
-              type:
-                typeof column.type === 'string'
-                  ? column.type
-                  : column.type?.name || 'text',
-              primary: column.isPrimary,
-              generated: column.isGenerated,
-              nullable: column.isNullable,
-            })),
-          primaryColumns: metadata.primaryColumns.map(
-            column => column.databaseName,
-          ),
-        }));
+      const sqlTables: TaonSudoModels.SqlTable[] =
+        context.connection.entityMetadatas
+          // .filter(metadata => registeredEntityNames.has(metadata.name))
+          .map(metadata => ({
+            name: metadata.name,
+            tableName: metadata.tableName,
+            columns: metadata.columns
+              .filter(column => !column.isVirtual && !column.isVirtualProperty)
+              .map(column => ({
+                name: column.databaseName,
+                propertyName: column.propertyName,
+                type:
+                  typeof column.type === 'string'
+                    ? column.type
+                    : column.type?.name || 'text',
+                primary: column.isPrimary,
+                generated: column.isGenerated,
+                nullable: column.isNullable,
+              })),
+            primaryColumns: metadata.primaryColumns.map(
+              column => column.databaseName,
+            ),
+          }));
+
+      const entityTableNames = new Set(
+        context.connection.entityMetadatas.flatMap(metadata => [
+          metadata.tableName,
+          metadata.tablePath,
+        ]),
+      );
+      let rawTables: TaonSudoModels.SqlTable[] = [];
+      try {
+        rawTables = (
+          await this.taonSudoRepository.getRawSqlTables(context)
+        ).filter(table => !entityTableNames.has(table.tableName));
+      } catch (error) {
+        console.warn(
+          `[taon-sudo] Raw SQL table discovery failed for context "${contextName}"`,
+          error,
+        );
+      }
 
       return [
         ...sqlTables,
-        {
-          name: TAON_MIGRATION_META_TABLE_NAME,
-          tableName: TAON_MIGRATION_META_TABLE_NAME,
-          columns: this.ctx.dbMigrations.table.columns.map(c => {
-            return {
-              generated: c.isGenerated,
-              nullable: c.isNullable,
-              name: c.name,
-              primary: c.isPrimary,
-              propertyName: c.name,
-              type: c.type,
-            };
-          }),
-          primaryColumns: ['id'],
-        },
+        ...rawTables.map(table =>
+          table.tableName === TAON_MIGRATION_META_TABLE_NAME
+            ? { ...table, sensitive: true }
+            : table,
+        ),
       ];
     };
     //#endregion
   }
   //#endregion
+  //#endregion
+
+  //#region methods / is entity table
+  /**
+   * True when the name points to a TypeORM entity (by entity or table name).
+   * Other tables are handled through raw (introspected) SQL.
+   */
+  private isEntityTable(contextName: string, entityName: string): boolean {
+    //#region @websqlFunc
+    const context = this.getContext(contextName);
+    return !!context.connection?.entityMetadatas.some(
+      item => item.name === entityName || item.tableName === entityName,
+    );
+    //#endregion
+  }
   //#endregion
 
   //#region methods / SQL rows
@@ -373,59 +393,26 @@ export class TaonSudoController extends TaonBaseController<
         Math.max(1, Math.floor(Number(pageSize) || 25)),
       );
 
-      //#region migration meta table
+      //#region raw (introspected) tables
 
-      if (entityName === TAON_MIGRATION_META_TABLE_NAME) {
-        const context = this.getContext(contextName);
-
-        if (!context.connection) {
-          Taon.error({
-            status: getStatusCode(HttpStatusEnum.BAD_REQUEST),
-            message: `Context "${contextName}" does not have an initialized SQL connection.`,
-          });
-        }
-
-        const table = this.ctx.dbMigrations.table;
-
-        const columns = table.columns.map(column => ({
-          name: column.name,
-          propertyName: column.name,
-          primary: column.isPrimary,
-          generated: column.isGenerated,
-          nullable: column.isNullable,
-        }));
-
-        const queryRunner = context.connection!.createQueryRunner();
-
-        try {
-          await queryRunner.connect();
-
-          const driver = queryRunner.connection.driver;
-          const escapedTableName = driver.escape(
-            TAON_MIGRATION_META_TABLE_NAME,
-          );
-
-          const rows = await queryRunner.query(`
-        SELECT *
-        FROM ${escapedTableName}
-        ORDER BY ${driver.escape('id')} ASC
-        LIMIT ${safePageSize}
-        OFFSET ${safePage * safePageSize}
-      `);
-
-          const countResult = await queryRunner.query(`
-        SELECT COUNT(*) AS count
-        FROM ${escapedTableName}
-      `);
-
-          return {
-            columns,
-            rows: rows as Record<string, unknown>[],
-            totalCount: Number(countResult?.[0]?.count || 0),
-          };
-        } finally {
-          await queryRunner.release();
-        }
+      if (!this.isEntityTable(contextName, entityName)) {
+        const result = await this.taonSudoRepository.getRawSqlRows(
+          this.getContext(contextName),
+          entityName,
+          safePage,
+          safePageSize,
+        );
+        return {
+          columns: result.table.columns.map(column => ({
+            name: column.name,
+            propertyName: column.propertyName,
+            primary: column.primary,
+            generated: column.generated,
+            nullable: column.nullable,
+          })),
+          rows: result.rows,
+          totalCount: result.totalCount,
+        };
       }
 
       //#endregion
@@ -516,6 +503,14 @@ export class TaonSudoController extends TaonBaseController<
   ): Taon.Response<Record<string, unknown>> {
     //#region @backendFunc
     return async () => {
+      if (!this.isEntityTable(contextName, entityName)) {
+        await this.taonSudoRepository.insertRawSqlRow(
+          this.getContext(contextName),
+          entityName,
+          row,
+        );
+        return {};
+      }
       const { repository } = this.getSqlEntity(contextName, entityName);
       const values = this.filterPersistedValues(repository, row, false);
       return await repository.save(repository.create(values));
@@ -534,6 +529,14 @@ export class TaonSudoController extends TaonBaseController<
   ): Taon.Response<boolean> {
     //#region @backendFunc
     return async () => {
+      if (!this.isEntityTable(contextName, entityName)) {
+        return await this.taonSudoRepository.updateRawSqlRow(
+          this.getContext(contextName),
+          entityName,
+          primaryKey,
+          row,
+        );
+      }
       const { repository } = this.getSqlEntity(contextName, entityName);
       const key = this.filterPersistedValues(repository, primaryKey, true);
       const primaryColumns = repository.metadata.primaryColumns;
@@ -566,6 +569,13 @@ export class TaonSudoController extends TaonBaseController<
   ): Taon.Response<boolean> {
     //#region @backendFunc
     return async () => {
+      if (!this.isEntityTable(contextName, entityName)) {
+        return await this.taonSudoRepository.deleteRawSqlRow(
+          this.getContext(contextName),
+          entityName,
+          primaryKey,
+        );
+      }
       const { repository } = this.getSqlEntity(contextName, entityName);
       const key = this.filterPersistedValues(repository, primaryKey, true);
       const primaryColumns = repository.metadata.primaryColumns;
@@ -583,6 +593,38 @@ export class TaonSudoController extends TaonBaseController<
       }
       const result = await repository.delete(key);
       return !!result.affected;
+    };
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / clear sql table
+  /**
+   * Removes all rows from the table (schema is kept, foreign keys are
+   * enforced). Returns the number of rows that existed before clearing.
+   */
+  @DELETE()
+  clearSqlTable(
+    @Query('contextName') contextName: string,
+    @Query('entityName') entityName: string,
+  ): Taon.Response<number> {
+    //#region @backendFunc
+    return async () => {
+      if (!this.isEntityTable(contextName, entityName)) {
+        return await this.taonSudoRepository.clearSqlTable(
+          this.getContext(contextName),
+          entityName,
+        );
+      }
+      const { repository } = this.getSqlEntity(contextName, entityName);
+      const count = await repository.count();
+      // DELETE FROM (not TRUNCATE) - keeps foreign key checks active
+      await repository
+        .createQueryBuilder()
+        .delete()
+        .from(repository.metadata.target)
+        .execute();
+      return count;
     };
     //#endregion
   }
@@ -712,6 +754,79 @@ export class TaonSudoController extends TaonBaseController<
     //#endregion
   }
   //#endregion
+
+  //#region methods / clear kv batch
+  /**
+   * Deletes one batch of KV keys. Call repeatedly (passing the returned
+   * cursor) until done === true. Cloudflare KV deletions propagate
+   * eventually, so recently deleted keys may still be visible for a while.
+   */
+  @DELETE()
+  clearKvBatch(
+    @Query('contextName') contextName: string,
+    @Query('repositoryName') repositoryName: string,
+    @Query('cursor') cursor?: string,
+  ): Taon.Response<TaonSudoModels.ClearBatchResult> {
+    //#region @backendFunc
+    return async () => {
+      const batchSize = 100;
+      const context = this.getContext(contextName);
+      const repository = this.getKvRepository(contextName, repositoryName);
+      const result: TaonSudoModels.ClearBatchResult = {
+        deleted: 0,
+        failed: 0,
+        done: false,
+      };
+
+      if (
+        repository instanceof TaonBaseKvRepository &&
+        UtilsOs.isRunningInCloudflareWorker()
+      ) {
+        if (!context.KV) {
+          Taon.error({
+            status: getStatusCode(HttpStatusEnum.INTERNAL_SERVER_ERROR),
+            message: `Context "${contextName}" has no configured KV namespace.`,
+          });
+        }
+        const page = await context.KV.list({
+          prefix: `${context.contextName}:${ClassHelpers.getName(repository)}:`,
+          cursor: cursor || undefined,
+          limit: batchSize,
+        });
+        const outcomes = await Promise.allSettled(
+          page.keys.map(item => context.KV.delete(item.name)),
+        );
+        result.deleted = outcomes.filter(o => o.status === 'fulfilled').length;
+        result.failed = outcomes.length - result.deleted;
+        result.done = page.list_complete;
+        result.cursor = page.list_complete
+          ? undefined
+          : (page as { cursor: string }).cursor;
+        return result;
+      }
+
+      const keys = Object.keys(await repository.getAllData());
+      for (const key of keys.slice(0, batchSize)) {
+        try {
+          if (repository instanceof TaonBaseKvSyncRepository) {
+            repository.delete(key);
+          } else {
+            await repository.delete(key);
+          }
+          result.deleted++;
+        } catch (error) {
+          console.error(`[taon-sudo] Failed to delete KV key "${key}"`, error);
+          result.failed++;
+        }
+      }
+      const remaining = keys.length - result.deleted;
+      // stop when nothing more can be deleted (avoids endless client loops)
+      result.done = remaining === 0 || result.deleted === 0;
+      return result;
+    };
+    //#endregion
+  }
+  //#endregion
   //#endregion
 
   //#region methods / bucket controllers
@@ -723,6 +838,7 @@ export class TaonSudoController extends TaonBaseController<
     const classFn = context.getClassFunByClassName(controllerName);
     if (
       !classFn ||
+      classFn === TaonSudoUploadStorageController ||
       (classFn !== TaonBaseStorageController &&
         !(classFn.prototype instanceof TaonBaseStorageController))
     ) {
@@ -746,8 +862,9 @@ export class TaonSudoController extends TaonBaseController<
         .getClassFunByArr(Models.ClassType.CONTROLLER)
         .filter(
           classFn =>
-            classFn === TaonBaseStorageController ||
-            classFn.prototype instanceof TaonBaseStorageController,
+            (classFn === TaonBaseStorageController ||
+              classFn.prototype instanceof TaonBaseStorageController) &&
+            classFn !== TaonSudoUploadStorageController,
         )
         .map(classFn => ClassHelpers.getName(classFn));
     };
@@ -810,6 +927,108 @@ export class TaonSudoController extends TaonBaseController<
         t,
         expressPath: '',
       });
+    };
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / clear bucket batch
+  /**
+   * Deletes one batch of objects from a bucket (storage controller).
+   * Call repeatedly until done === true. Bucket definitions are preserved.
+   */
+  @DELETE()
+  clearBucketBatch(
+    @Query('contextName') contextName: string,
+    @Query('controllerName') controllerName: string,
+  ): Taon.Response<TaonSudoModels.ClearBatchResult> {
+    //#region @backendFunc
+    return async (req, res) => {
+      const controller = this.getStorageController(contextName, controllerName);
+      const objects = await controller.list({ limit: 100 })(req, res);
+      if (!objects.length) {
+        return { deleted: 0, failed: 0, done: true };
+      }
+      // @ts-ignore @UNCOMMENT
+      const keys = objects.map(item => item.key);
+      const result = await controller.deleteMany(keys)(req, res);
+      // @ts-ignore @UNCOMMENT
+      const deleted = result.deleted.length;
+      return {
+        deleted,
+        failed: keys.length - deleted,
+        // no progress possible - stop instead of looping forever
+        done: deleted === 0,
+      };
+    };
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / transfer uploaded bucket file
+  /**
+   * Moves a file uploaded through multipart upload (sudo staging bucket)
+   * into the target bucket.
+   * - replace === false: new asset; rejects existing key (409)
+   * - replace === true: overwrites an existing asset; key must exist (404)
+   */
+  @POST()
+  transferUploadedBucketFile(
+    @Query('contextName') contextName: string,
+    @Query('controllerName') controllerName: string,
+    @Body('uploadKey') uploadKey: string,
+    @Body('targetKey') targetKey: string,
+    @Body('replace') replace: boolean,
+  ): Taon.Response<TaonStorageObject | undefined> {
+    //#region @backendFunc
+    return async (req, res) => {
+      const staging = this.uploadStorageController;
+      staging.assertStagedKey(uploadKey);
+      try {
+        const context = this.getContext(contextName);
+        const controller = this.getStorageController(
+          contextName,
+          controllerName,
+        );
+        const staged = await staging.getStagedObject(uploadKey);
+        const key = String(targetKey || staged.key).trim();
+        this.taonSudoRepository.assertSafeStorageKey(key);
+        const exists = !!(await controller.getMetadata(key)(req, res));
+        if (replace && !exists) {
+          Taon.error({
+            status: getStatusCode(HttpStatusEnum.NOT_FOUND),
+            message: `Asset "${key}" no longer exists in bucket "${controllerName}"; nothing to replace.`,
+          });
+        }
+        if (!replace && exists) {
+          Taon.error({
+            status: getStatusCode(HttpStatusEnum.CONFLICT),
+            message: `Asset "${key}" already exists in bucket "${controllerName}". Use Replace to overwrite it.`,
+          });
+        }
+        await this.taonSudoRepository.writeBucketObjectFromStaged({
+          staged: staging.stagedObjectLocation(uploadKey),
+          targetContext: context,
+          controllerName,
+          key,
+          size: staged.size,
+          fileName: staged.fileName,
+          contentType: staged.contentType,
+          metadata: Object.fromEntries(
+            Object.entries(staged.metadata || {}).filter(
+              ([name]) => name !== 'fileName',
+            ),
+          ),
+        });
+        return await controller.getMetadata(key)(req, res);
+      } finally {
+        await staging.deleteStagedObject(uploadKey).catch(error => {
+          console.warn(
+            `[taon-sudo] Failed to remove staged upload "${uploadKey}"`,
+            error,
+          );
+        });
+      }
     };
     //#endregion
   }

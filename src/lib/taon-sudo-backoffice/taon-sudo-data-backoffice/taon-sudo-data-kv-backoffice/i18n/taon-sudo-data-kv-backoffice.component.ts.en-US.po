@@ -4,30 +4,86 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:45
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:47
 msgid "Key"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:46
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:48
 msgid "Value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:48
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:50
 msgid "Actions"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:55
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:57
 msgid "Edit value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:61
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:63
 msgid "Delete key"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:180
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:184
 msgid "A key is required."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:187
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:191
 msgid "Value must be valid JSON."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:216
+msgid "Delete KV key"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:217
+msgid "Delete KV key [[ key ]]?"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:218
+msgid "Delete"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:249
+msgid "Clear KV database"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:250
+msgid "All entries of KV database [[ repository ]] (context [[ context ]]) will be deleted. The database itself is kept."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:255
+msgid "Clear"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:273
+msgid "Clear ALL KV databases"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:274
+msgid "All entries from ALL [[ count ]] KV databases of context [[ context ]] will be deleted. The databases themselves are kept."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:279
+msgid "Clear All"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:315
+msgid "Clearing [[ repository ]]... [[ deleted ]] entries deleted."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:333
+msgid "[[ repository ]] ([[ failed ]] entries failed)"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:342
+msgid "Deletion requested for [[ deleted ]] entries. Cloudflare KV may still return deleted keys for up to ~60 seconds while the change propagates."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:349
+msgid "Some KV databases were not fully cleared: [[ list ]]"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-kv-backoffice/taon-sudo-data-kv-backoffice.component.ts:361
+msgid "Cloudflare KV is eventually consistent: deleted keys can remain visible in other locations for up to about 60 seconds."
 msgstr ""

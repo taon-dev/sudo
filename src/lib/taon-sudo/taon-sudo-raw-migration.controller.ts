@@ -31,6 +31,7 @@ import {
   TaonSudoRawMigrationSummary,
 } from './taon-sudo-raw-migration.models';
 import { TaonSudoRawMigrationRepository } from './taon-sudo-raw-migration.repository';
+import { TaonSudoUploadStorageController } from './taon-sudo-upload-storage.controller';
 //#endregion
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
@@ -62,6 +63,10 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     TaonSessionRepository,
   );
 
+  protected readonly uploadStorageController = this.injectController(
+    TaonSudoUploadStorageController,
+  );
+
   protected readonly jobs = new Map<string, ActiveMigrationJob>();
 
   protected contexts: EndpointContext[] = [];
@@ -80,9 +85,10 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     data: Models.TaonCtrlBeforeEachRequestParams<TaonSudoRawMigrationController>,
   ): Promise<void> {
     if (this.taonSessionProvider.isLocalhost) {
+      // QUICK_FIX so I can have easy raw migrations on localhost
+      data.req.userId = Number.MAX_SAFE_INTEGER;
       return;
     }
-
     await this.taonSessionRepository.throwIfNotAuthenticated(data);
     const { req } = data || {};
     const context = await this.authRepository.getContext(
@@ -91,7 +97,7 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     );
     // console.log({ userId: req.userId, sessionId: req.sessionId });
     // console.log('context raw migraiton', context);
-    if (context.isSuperUser || context.isLocalhostBackend) {
+    if (context.isSuperUser) {
       // OK for super user
     } else {
       Taon.error({
@@ -285,6 +291,52 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
         file,
         name,
       );
+    };
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / import raw migration snapshot from upload
+  /**
+   * Imports a ZIP previously uploaded in chunks through
+   * TaonSudoUploadStorageController (multipart upload). The staged object is
+   * always removed afterwards.
+   */
+  @POST()
+  importRawMigrationSnapshotFromUpload(
+    @Query('contextName') contextName: string,
+    @Query('name') name: string,
+    @Query('uploadKey') uploadKey: string,
+  ): Taon.Response<TaonSudoRawMigrationSummary> {
+    //#region @backendFunc
+    return async () => {
+      const uploads = this.uploadStorageController;
+      try {
+        const context = this.getContext(contextName);
+        const staged = await uploads.getStagedObject(uploadKey);
+        const location = uploads.stagedObjectLocation(uploadKey);
+        return await this.rawMigrationRepository.importSnapshot(
+          context,
+          {
+            fieldName: 'file',
+            fileName: staged.fileName || uploadKey,
+            mimeType: staged.contentType || 'application/zip',
+            tempKeyOrPath: location.keyOrPath,
+          },
+          name,
+          {
+            r2Bucket: location.r2Bucket,
+            cleanup: () => uploads.deleteStagedObject(uploadKey),
+          },
+        );
+      } catch (error) {
+        try {
+          await uploads.deleteStagedObject(uploadKey);
+        } catch {
+          // already removed by the import cleanup
+        }
+        throw error;
+      }
     };
     //#endregion
   }

@@ -1,0 +1,51 @@
+<h2
+  mat-dialog-title
+  cdkDrag
+  cdkDragRootElement=".cdk-overlay-pane">
+  {{ data.title }}
+</h2>
+<mat-dialog-content>
+  <p class="confirm-message">{{ data.message }}</p>
+  @for (detail of data.details || []; track $index) {
+    <p
+      class="confirm-detail"
+      [class.confirm-detail-warn]="data.destructive">
+      {{ detail }}
+    </p>
+  }
+  @if (data.requiredPhrase) {
+    <p>
+      {{
+        t.gettext('Type [[ phrase ]] to confirm.', {
+          phrase: data.requiredPhrase,
+        })
+      }}
+    </p>
+    <mat-form-field
+      appearance="outline"
+      class="confirm-phrase">
+      <mat-label>{{ t.gettext('Confirmation') }}</mat-label>
+      <input
+        matInput
+        autocomplete="off"
+        [value]="typedPhrase()"
+        (input)="onPhraseInput($event)" />
+    </mat-form-field>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button
+    mat-button
+    type="button"
+    [mat-dialog-close]="false">
+    {{ t.gettext('Cancel') }}
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    [color]="data.destructive ? 'warn' : 'primary'"
+    [disabled]="!canConfirm()"
+    [mat-dialog-close]="true">
+    {{ data.confirmLabel || t.gettext('Confirm') }}
+  </button>
+</mat-dialog-actions>

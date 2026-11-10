@@ -5,6 +5,7 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -14,6 +15,7 @@ import { Translation } from '@taon-dev/i18n/src';
 import { Taon } from 'taon/src';
 
 import { TaonSudoApiService } from '../../../taon-sudo/taon-sudo.api.service';
+import { TaonSudoConfirmDialogComponent } from '../../taon-sudo-confirm-dialog.component';
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
 
@@ -72,8 +74,10 @@ export class TaonSudoDataKvBackofficeComponent {
   readonly editing = signal(false);
   readonly loading = signal(false);
   readonly error = signal('');
+  readonly status = signal('');
 
   private readonly api = inject(TaonSudoApiService);
+  private readonly dialog = inject(MatDialog);
 
   constructor() {
     void this.initialize();
@@ -206,7 +210,16 @@ export class TaonSudoDataKvBackofficeComponent {
   }
 
   async remove(row: KvRow): Promise<void> {
-    if (!globalThis.confirm(this.t.gettext(`Delete KV key "${row.key}"?`))) {
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Delete KV key'),
+        message: this.t.gettext('Delete KV key [[ key ]]?', { key: row.key }),
+        confirmLabel: this.t.gettext('Delete'),
+        destructive: true,
+      },
+    );
+    if (!confirmed) {
       return;
     }
     this.loading.set(true);
@@ -222,6 +235,140 @@ export class TaonSudoDataKvBackofficeComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async clearRepository(): Promise<void> {
+    const contextName = this.selectedContext();
+    const repositoryName = this.selectedRepository();
+    if (!contextName || !repositoryName) {
+      return;
+    }
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Clear KV database'),
+        message: this.t.gettext(
+          'All entries of KV database [[ repository ]] (context [[ context ]]) will be deleted. The database itself is kept.',
+          { repository: repositoryName, context: contextName },
+        ),
+        details: [this.eventualConsistencyNote()],
+        confirmLabel: this.t.gettext('Clear'),
+        destructive: true,
+      },
+    );
+    if (confirmed) {
+      await this.clear(contextName, [repositoryName]);
+    }
+  }
+
+  async clearAll(): Promise<void> {
+    const contextName = this.selectedContext();
+    const repositories = this.repositories();
+    if (!contextName || !repositories.length) {
+      return;
+    }
+    const confirmed = await TaonSudoConfirmDialogComponent.confirm(
+      this.dialog,
+      {
+        title: this.t.gettext('Clear ALL KV databases'),
+        message: this.t.gettext(
+          'All entries from ALL [[ count ]] KV databases of context [[ context ]] will be deleted. The databases themselves are kept.',
+          { count: repositories.length, context: contextName },
+        ),
+        details: [repositories.join(', '), this.eventualConsistencyNote()],
+        confirmLabel: this.t.gettext('Clear All'),
+        destructive: true,
+        requiredPhrase: contextName,
+      },
+    );
+    if (confirmed) {
+      await this.clear(contextName, repositories);
+    }
+  }
+
+  private async clear(
+    contextName: string,
+    repositories: string[],
+  ): Promise<void> {
+    this.loading.set(true);
+    this.error.set('');
+    this.status.set('');
+    const failures: string[] = [];
+    let deletedTotal = 0;
+    try {
+      for (const repositoryName of repositories) {
+        let cursor: string | undefined;
+        let deleted = 0;
+        let failed = 0;
+        try {
+          // batches until the backend reports completion
+          for (;;) {
+            const batch = await this.api.clearKvBatch(
+              contextName,
+              repositoryName,
+              cursor,
+            );
+            deleted += batch.deleted;
+            failed += batch.failed;
+            cursor = batch.cursor;
+            this.status.set(
+              this.t.gettext(
+                'Clearing [[ repository ]]... [[ deleted ]] entries deleted.',
+                { repository: repositoryName, deleted },
+              ),
+            );
+            if (batch.done) {
+              break;
+            }
+          }
+        } catch (error: unknown) {
+          console.error(
+            `[taon-sudo-data-kv-backoffice] Clear failed for ${repositoryName}`,
+            error,
+          );
+          failures.push(`${repositoryName} (${this.errorMessage(error)})`);
+        }
+        if (failed) {
+          failures.push(
+            this.t.gettext('[[ repository ]] ([[ failed ]] entries failed)', {
+              repository: repositoryName,
+              failed,
+            }),
+          );
+        }
+        deletedTotal += deleted;
+      }
+      this.status.set(
+        this.t.gettext(
+          'Deletion requested for [[ deleted ]] entries. Cloudflare KV may still return deleted keys for up to ~60 seconds while the change propagates.',
+          { deleted: deletedTotal },
+        ),
+      );
+      if (failures.length) {
+        this.error.set(
+          this.t.gettext('Some KV databases were not fully cleared: [[ list ]]', {
+            list: failures.join('; '),
+          }),
+        );
+      }
+    } finally {
+      this.loading.set(false);
+    }
+    await this.reload();
+  }
+
+  private eventualConsistencyNote(): string {
+    return this.t.gettext(
+      'Cloudflare KV is eventually consistent: deleted keys can remain visible in other locations for up to about 60 seconds.',
+    );
+  }
+
+  private errorMessage(error: unknown): string {
+    const body = (error as { body?: { json?: { message?: string } } })?.body;
+    return (
+      body?.json?.message ||
+      (error instanceof Error ? error.message : String(error))
+    );
   }
 
   updateKey(event: Event): void {

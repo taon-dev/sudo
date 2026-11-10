@@ -25,6 +25,15 @@ msgstr ""
 msgid "Reload"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:58
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:61
+msgid "Clear"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:69
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:70
+msgid "Warning: [[ table ]] is an operational migrations table. Editing or deleting rows can cause migrations to run again or be skipped."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-sql-backoffice/taon-sudo-data-sql-backoffice.component.html:85
 msgid "Loading SQL data..."
 msgstr ""

@@ -9,8 +9,10 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterOutlet } from '@angular/router';
 import { Translation } from '@taon-dev/i18n/src';
@@ -34,8 +36,10 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
   imports: [
     DatePipe,
     RouterOutlet,
+    MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatProgressBarModule,
     MatSelectModule,
   ],
   providers: [TaonSudoRawMigrationsBackofficeApiService],
@@ -72,6 +76,13 @@ export class TaonSudoRawMigrationsBackofficeComponent
 
   readonly statusMessage = signal('');
 
+  /**
+   * Real multipart upload progress (acknowledged bytes), null when idle.
+   */
+  readonly uploadProgress = signal<number | null>(null);
+
+  private uploadAbortController: AbortController | null = null;
+
   private destroyed = false;
   //#endregion
 
@@ -84,6 +95,7 @@ export class TaonSudoRawMigrationsBackofficeComponent
   //#region methods / ng on destroy
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.uploadAbortController?.abort();
   }
   //#endregion
 
@@ -299,16 +311,52 @@ export class TaonSudoRawMigrationsBackofficeComponent
     if (!name?.trim()) {
       return;
     }
+    const abortController = new AbortController();
+    this.uploadAbortController = abortController;
+    this.uploadProgress.set(0);
     await this.runRequest(
-      this.t.gettext('Importing raw migration ZIP'),
+      this.t.gettext('Uploading raw migration ZIP ([[ size ]])', {
+        size: this.formatBytes(file.size),
+      }),
       async () => {
-        const snapshot = await this.api.importSnapshot(context, file, name);
-        this.statusMessage.set(
-          this.t.gettext('Snapshot imported: ') + snapshot.name,
-        );
-        await this.loadSnapshots();
+        try {
+          const snapshot = await this.api.importSnapshot(context, file, name, {
+            signal: abortController.signal,
+            onProgress: percentage => this.uploadProgress.set(percentage),
+            onUploaded: () => {
+              this.uploadProgress.set(null);
+              this.uploadAbortController = null;
+              this.statusMessage.set(
+                this.t.gettext('Importing raw migration ZIP'),
+              );
+            },
+          });
+          this.statusMessage.set(
+            this.t.gettext('Snapshot imported: ') + snapshot.name,
+          );
+          await this.loadSnapshots();
+        } catch (error) {
+          if (abortController.signal.aborted) {
+            this.statusMessage.set(
+              this.t.gettext(
+                'Upload cancelled. The unfinished multipart upload was aborted.',
+              ),
+            );
+            return;
+          }
+          throw error;
+        } finally {
+          this.uploadProgress.set(null);
+          this.uploadAbortController = null;
+        }
       },
     );
+  }
+  //#endregion
+
+  //#region methods / cancel upload
+  cancelUpload(): void {
+    this.uploadAbortController?.abort();
   }
   //#endregion
 

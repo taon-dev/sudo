@@ -7,3 +7,7 @@
   align-items: center;
   gap: 1rem;
 }
+.sql-warning {
+  color: var(--mat-sys-error, #b3261e);
+  font-weight: 500;
+}

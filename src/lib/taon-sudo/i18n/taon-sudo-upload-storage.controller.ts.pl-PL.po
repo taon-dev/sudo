@@ -4,6 +4,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo/taon-sudo-upload-storage.controller.ts:72
+#: src/lib/taon-sudo/taon-sudo-upload-storage.controller.ts:74
 msgid "[@taon-dev/sudo] Only super users can upload sudo files."
 msgstr ""

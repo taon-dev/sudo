@@ -38,16 +38,16 @@ export class TaonSudoUploadStorageController extends TaonBaseStorageController<
   TaonSudoUploadStorageController
 > {
   //#region fields & getters
-  private readonly taonSessionRepository = this.injectCustomRepo(
+  private readonly taonSessionRepository = this.inject(
     TaonSessionRepository,
   );
 
-  private readonly taonAuthContextRepository = this.injectCustomRepo(
+  private readonly taonAuthContextRepository = this.inject(
     TaonAuthContextRepository,
   );
 
   private readonly taonSessionProvider =
-    this.injectProvider(TaonSessionProvider);
+    this.inject(TaonSessionProvider);
   //#endregion
 
   //#region methods / before each request

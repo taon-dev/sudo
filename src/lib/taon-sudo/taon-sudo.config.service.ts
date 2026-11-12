@@ -9,7 +9,7 @@ import { TaonSudoProvider } from './taon-sudo.provider';
 
 @Injectable()
 export class TaonSudoConfigService extends TaonBaseAngularService {
-  private taonSudoProvider = this.injectProvider(TaonSudoProvider);
+  private taonSudoProvider = this.inject(TaonSudoProvider);
 
   clone(): Partial<TaonSudoProvider> {
     const cloned = this.taonSudoProvider.clone();

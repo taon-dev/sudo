@@ -49,20 +49,20 @@ export class TaonSudoController extends TaonBaseController<
 > {
   //#region fields & getters
   protected readonly taonSudoRepository =
-    this.injectCustomRepo(TaonSudoRepository);
+    this.inject(TaonSudoRepository);
 
-  protected readonly taonAuthContextRepository = this.injectCustomRepo(
+  protected readonly taonAuthContextRepository = this.inject(
     TaonAuthContextRepository,
   );
 
-  protected readonly taonSessionRepository = this.injectCustomRepo(
+  protected readonly taonSessionRepository = this.inject(
     TaonSessionRepository,
   );
 
   protected readonly taonSessionProvider =
-    this.injectProvider(TaonSessionProvider);
+    this.inject(TaonSessionProvider);
 
-  protected readonly uploadStorageController = this.injectController(
+  protected readonly uploadStorageController = this.inject(
     TaonSudoUploadStorageController,
   );
 

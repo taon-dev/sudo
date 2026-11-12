@@ -12,11 +12,11 @@ import { TaonSudoUploadStorageController } from '../../taon-sudo/taon-sudo-uploa
 
 @Injectable()
 export class TaonSudoRawMigrationsBackofficeApiService extends TaonBaseAngularService {
-  private readonly controller = this.injectController(
+  private readonly controller = this.inject(
     TaonSudoRawMigrationController,
   );
 
-  private readonly uploadController = this.injectController(
+  private readonly uploadController = this.inject(
     TaonSudoUploadStorageController,
   );
 

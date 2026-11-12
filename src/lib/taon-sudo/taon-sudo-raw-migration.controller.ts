@@ -48,22 +48,22 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   TaonSudoRawMigrationController
 > {
   //#region fields & getters
-  protected readonly rawMigrationRepository = this.injectCustomRepo(
+  protected readonly rawMigrationRepository = this.inject(
     TaonSudoRawMigrationRepository,
   );
 
   protected readonly taonSessionProvider =
-    this.injectProvider(TaonSessionProvider);
+    this.inject(TaonSessionProvider);
 
-  protected readonly authRepository = this.injectCustomRepo(
+  protected readonly authRepository = this.inject(
     TaonAuthContextRepository,
   );
 
-  protected readonly taonSessionRepository = this.injectCustomRepo(
+  protected readonly taonSessionRepository = this.inject(
     TaonSessionRepository,
   );
 
-  protected readonly uploadStorageController = this.injectController(
+  protected readonly uploadStorageController = this.inject(
     TaonSudoUploadStorageController,
   );
 

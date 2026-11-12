@@ -30,9 +30,9 @@ export interface TaonSudoSqlEntity {
 @Injectable()
 export class TaonSudoApiService extends TaonBaseAngularService {
   private readonly taonSudoController =
-    this.injectController(TaonSudoController);
+    this.inject(TaonSudoController);
 
-  private readonly uploadController = this.injectController(
+  private readonly uploadController = this.inject(
     TaonSudoUploadStorageController,
   );
 

@@ -1585,7 +1585,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           .join('\0') !== [...entity.columns].sort().join('\0')
       ) {
         throw new Error(
-          `The SQL schema for "${entity.name}" differs from the snapshot. Restore was not started.`,
+          `The SQL schema for "${entity.tableName}" differs from the snapshot. Restore was not started.`,
         );
       }
     }

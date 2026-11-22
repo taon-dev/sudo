@@ -57,15 +57,30 @@
   }
 
   @if (step() < 3) {
-    <mat-form-field
-      appearance="outline"
-      class="search">
-      <mat-label>{{ t.gettext('Search tables') }}</mat-label>
-      <input
-        matInput
-        [value]="search()"
-        (input)="setSearch($event)" />
-    </mat-form-field>
+    <div class="table-filter-row">
+      <mat-form-field
+        appearance="outline"
+        class="search">
+        <mat-label>{{ t.gettext('Search tables') }}</mat-label>
+        <input
+          matInput
+          [value]="search()"
+          (input)="setSearch($event)" />
+      </mat-form-field>
+      <mat-form-field
+        appearance="outline"
+        class="table-selector">
+        <mat-label>{{ t.gettext('Select table') }}</mat-label>
+        <mat-select
+          [value]="selectedTable()"
+          (selectionChange)="setSelectedTable($event.value)">
+          <mat-option value="">{{ t.gettext('All tables') }}</mat-option>
+          @for (name of tableNames(); track name) {
+            <mat-option [value]="name">{{ name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
   }
 
   @if (step() === 0) {
@@ -88,8 +103,10 @@
               (change)="setEntitySelected(mapping, $event.checked)">
             </mat-checkbox>
             <div>
-              <strong>{{ sourceEntity(mapping).name }}</strong>
-              <small>{{ sourceEntity(mapping).tableName }}</small>
+              <strong>{{ sourceEntity(mapping).tableName }}</strong>
+              <small
+                >runtime class name: {{ sourceEntity(mapping).name }}</small
+              >
             </div>
             <span class="arrow">→</span>
             <mat-form-field appearance="outline">
@@ -105,7 +122,8 @@
                   track entity.tableName
                 ) {
                   <mat-option [value]="entity.tableName">
-                    {{ entity.name }} ({{ entity.tableName }})
+                    {{ entity.tableName }}
+                    <!-- <small> {{ entity.name }} </small> -->
                   </mat-option>
                 }
               </mat-select>
@@ -120,80 +138,408 @@
       <p>
         {{
           t.gettext(
-            'Skipped columns are omitted. Required destination columns must be mapped or have a database default.'
+            'Skipped snapshot columns are omitted. Resolve required destination columns by mapping a snapshot column or choosing a value strategy.'
           )
         }}
       </p>
 
-      @for (mapping of filteredMappings(); track mapping.sourceTableName) {
-        @if (mapping.selected && destinationEntity(mapping); as destination) {
-          <article class="column-card">
-            <h4>
-              {{ sourceEntity(mapping).tableName }} →
-              {{ destination.tableName }}
-            </h4>
-            @for (
-              columnMapping of mapping.columns;
-              track columnMapping.sourceColumn
-            ) {
-              <div class="column-row">
-                <code>{{ columnMapping.sourceColumn }}</code>
-                <span class="arrow">→</span>
-                <mat-form-field appearance="outline">
-                  <mat-label>{{ t.gettext('Destination column') }}</mat-label>
-                  <mat-select
-                    [value]="columnMapping.destinationColumn"
-                    (selectionChange)="
-                      setColumnDestination(
-                        mapping,
-                        columnMapping.sourceColumn,
-                        $event.value
-                      )
-                    ">
-                    <mat-option [value]="null">
-                      {{ t.gettext('Skip column') }}
-                    </mat-option>
-                    @for (
-                      column of destination.columns;
-                      track column.databaseName
-                    ) {
-                      <mat-option [value]="column.databaseName">
-                        {{ column.databaseName }}
-                        @if (
-                          !column.nullable &&
-                          !column.generated &&
-                          column.default === undefined
-                        ) {
-                          ({{ t.gettext('required') }})
-                        }
-                      </mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-            }
-          </article>
+      <mat-accordion multi>
+        @for (mapping of filteredMappings(); track mapping.sourceTableName) {
+          @if (mapping.selected && destinationEntity(mapping); as destination) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ sourceEntity(mapping).tableName }} →
+                  {{ destination.tableName }}
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+
+              <ng-template matExpansionPanelContent>
+                <article class="column-card">
+                  @for (
+                    columnMapping of mapping.columns;
+                    track columnMapping.sourceColumn
+                  ) {
+                    <div class="column-row">
+                      <code>{{ columnMapping.sourceColumn }}</code>
+                      <span class="arrow">→</span>
+                      <mat-form-field appearance="outline">
+                        <mat-label>{{
+                          t.gettext('Destination column')
+                        }}</mat-label>
+                        <mat-select
+                          [value]="columnMapping.destinationColumn"
+                          (selectionChange)="
+                            setColumnDestination(
+                              mapping,
+                              columnMapping.sourceColumn,
+                              $event.value
+                            )
+                          ">
+                          <mat-option [value]="null">
+                            {{ t.gettext('Skip column') }}
+                          </mat-option>
+                          @for (
+                            column of destination.columns;
+                            track column.databaseName
+                          ) {
+                            <mat-option [value]="column.databaseName">
+                              {{ column.databaseName }}
+                              @if (
+                                !column.nullable &&
+                                !column.generated &&
+                                column.default === undefined
+                              ) {
+                                ({{ t.gettext('required') }})
+                              }
+                            </mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+                    </div>
+                  }
+
+                  @if (missingDestinationColumns(mapping, destination).length) {
+                    <div class="missing-destination-columns">
+                      <h5>{{ t.gettext('Missing destination columns') }}</h5>
+                      @for (
+                        column of missingDestinationColumns(
+                          mapping,
+                          destination
+                        );
+                        track column.databaseName
+                      ) {
+                        @let valueMapping =
+                          columnValueMapping(mapping, column.databaseName);
+                        <article
+                          class="missing-column"
+                          [class.required-unmapped]="isRequiredColumn(column)">
+                          <div class="column-details">
+                            <strong>{{ column.databaseName }}</strong>
+                            <small>
+                              {{ t.gettext('Type') }}:
+                              {{ column.type || 'unknown' }}
+                              ·
+                              {{
+                                column.nullable
+                                  ? t.gettext('Nullable')
+                                  : t.gettext('Not nullable')
+                              }}
+                              ·
+                              {{
+                                column.default !== undefined
+                                  ? t.gettext('Database default available')
+                                  : t.gettext('No database default')
+                              }}
+                              @if (isRequiredColumn(column)) {
+                                · {{ t.gettext('Required') }}
+                              }
+                              @if (column.generated) {
+                                · {{ t.gettext('Generated by database') }}
+                              }
+                            </small>
+                          </div>
+                          @if (column.generated) {
+                            <p class="value-hint">
+                              {{
+                                t.gettext('The database generates this value.')
+                              }}
+                            </p>
+                          } @else {
+                            <mat-form-field appearance="outline">
+                              <mat-label>
+                                {{ t.gettext('Value strategy') }}
+                              </mat-label>
+                              <mat-select
+                                [value]="valueMapping.strategy || ''"
+                                (selectionChange)="
+                                  setColumnValueStrategy(
+                                    mapping,
+                                    column,
+                                    $event.value
+                                  )
+                                ">
+                                <mat-option value="">
+                                  {{ t.gettext('Select value strategy') }}
+                                </mat-option>
+                                @for (
+                                  strategy of availableValueStrategies(
+                                    column,
+                                    sourceEntity(mapping)
+                                  );
+                                  track strategy
+                                ) {
+                                  <mat-option [value]="strategy">
+                                    {{ strategyLabel(strategy) }}
+                                  </mat-option>
+                                }
+                              </mat-select>
+                            </mat-form-field>
+
+                            @if (valueMapping.strategy === 'constant') {
+                              @if (isBooleanColumn(column.type)) {
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{
+                                    t.gettext('Value')
+                                  }}</mat-label>
+                                  <mat-select
+                                    [value]="valueMapping.value"
+                                    (selectionChange)="
+                                      setColumnBooleanConstant(
+                                        mapping,
+                                        column.databaseName,
+                                        $event.value
+                                      )
+                                    ">
+                                    <mat-option [value]="true">true</mat-option>
+                                    <mat-option [value]="false"
+                                      >false</mat-option
+                                    >
+                                  </mat-select>
+                                </mat-form-field>
+                              } @else {
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{
+                                    t.gettext('Constant value')
+                                  }}</mat-label>
+                                  <input
+                                    matInput
+                                    [type]="
+                                      isNumericColumn(column.type)
+                                        ? 'number'
+                                        : 'text'
+                                    "
+                                    step="any"
+                                    [value]="valueMapping.value ?? ''"
+                                    (input)="
+                                      setColumnConstant(mapping, column, $event)
+                                    " />
+                                </mat-form-field>
+                              }
+                            }
+
+                            @if (valueMapping.strategy === 'sequential') {
+                              <div class="value-inputs">
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{
+                                    t.gettext('Start')
+                                  }}</mat-label>
+                                  <input
+                                    matInput
+                                    type="number"
+                                    step="any"
+                                    [value]="valueMapping.start ?? ''"
+                                    (input)="
+                                      setSequentialValue(
+                                        mapping,
+                                        column.databaseName,
+                                        'start',
+                                        $event
+                                      )
+                                    " />
+                                </mat-form-field>
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{ t.gettext('Step') }}</mat-label>
+                                  <input
+                                    matInput
+                                    type="number"
+                                    step="any"
+                                    [value]="valueMapping.step ?? ''"
+                                    (input)="
+                                      setSequentialValue(
+                                        mapping,
+                                        column.databaseName,
+                                        'step',
+                                        $event
+                                      )
+                                    " />
+                                </mat-form-field>
+                              </div>
+                            }
+
+                            @if (valueMapping.strategy === 'random') {
+                              <div class="value-inputs">
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{
+                                    t.gettext('Minimum')
+                                  }}</mat-label>
+                                  <input
+                                    matInput
+                                    type="number"
+                                    [value]="valueMapping.min ?? ''"
+                                    (input)="
+                                      setRandomValue(
+                                        mapping,
+                                        column.databaseName,
+                                        'min',
+                                        $event
+                                      )
+                                    " />
+                                </mat-form-field>
+                                <mat-form-field appearance="outline">
+                                  <mat-label>{{
+                                    t.gettext('Maximum')
+                                  }}</mat-label>
+                                  <input
+                                    matInput
+                                    type="number"
+                                    [value]="valueMapping.max ?? ''"
+                                    (input)="
+                                      setRandomValue(
+                                        mapping,
+                                        column.databaseName,
+                                        'max',
+                                        $event
+                                      )
+                                    " />
+                                </mat-form-field>
+                              </div>
+                            }
+
+                            @if (valueMapping.strategy === 'hash') {
+                              <mat-form-field appearance="outline">
+                                <mat-label>{{
+                                  t.gettext('Hash source mode')
+                                }}</mat-label>
+                                <mat-select
+                                  [value]="valueMapping.mode || 'deterministic'"
+                                  (selectionChange)="
+                                    setHashMode(
+                                      mapping,
+                                      column.databaseName,
+                                      $event.value
+                                    )
+                                  ">
+                                  <mat-option value="deterministic">
+                                    {{
+                                      t.gettext(
+                                        'Deterministic from source columns'
+                                      )
+                                    }}
+                                  </mat-option>
+                                  <mat-option value="random">
+                                    {{ t.gettext('Random hash per row') }}
+                                  </mat-option>
+                                </mat-select>
+                              </mat-form-field>
+                              @if (valueMapping.mode !== 'random') {
+                                <mat-form-field appearance="outline">
+                                  <mat-label>
+                                    {{ t.gettext('Source columns') }}
+                                  </mat-label>
+                                  <mat-select
+                                    multiple
+                                    [value]="valueMapping.sourceColumns || []"
+                                    (selectionChange)="
+                                      setHashSourceColumns(
+                                        mapping,
+                                        column.databaseName,
+                                        $event.value
+                                      )
+                                    ">
+                                    @for (
+                                      sourceColumn of sourceEntity(mapping)
+                                        .columns;
+                                      track sourceColumn.databaseName
+                                    ) {
+                                      <mat-option
+                                        [value]="sourceColumn.databaseName">
+                                        {{ sourceColumn.databaseName }}
+                                      </mat-option>
+                                    }
+                                  </mat-select>
+                                </mat-form-field>
+                              }
+                            }
+
+                            @if (valueMapping.strategy === 'copy') {
+                              <mat-form-field appearance="outline">
+                                <mat-label>
+                                  {{ t.gettext('Source snapshot column') }}
+                                </mat-label>
+                                <mat-select
+                                  [value]="valueMapping.sourceColumn || ''"
+                                  (selectionChange)="
+                                    setCopySourceColumn(
+                                      mapping,
+                                      column.databaseName,
+                                      $event.value
+                                    )
+                                  ">
+                                  <mat-option value="">
+                                    {{ t.gettext('Select source column') }}
+                                  </mat-option>
+                                  @for (
+                                    sourceColumn of compatibleCopySourceColumns(
+                                      column,
+                                      sourceEntity(mapping)
+                                    );
+                                    track sourceColumn.databaseName
+                                  ) {
+                                    <mat-option
+                                      [value]="sourceColumn.databaseName">
+                                      {{ sourceColumn.databaseName }}
+                                    </mat-option>
+                                  }
+                                </mat-select>
+                              </mat-form-field>
+                            }
+                          }
+
+                          @if (
+                            columnValueError(
+                              destination.tableName,
+                              column.databaseName
+                            );
+                            as valueError
+                          ) {
+                            <p class="column-error">{{ valueError }}</p>
+                          } @else if (
+                            isRequiredColumn(column) && !valueMapping.strategy
+                          ) {
+                            <p class="column-error">
+                              {{
+                                t.gettext(
+                                  'Select a value strategy to continue.'
+                                )
+                              }}
+                            </p>
+                          } @else if (validation() && valueMapping.strategy) {
+                            <p class="column-valid">
+                              {{ t.gettext('Value strategy is valid.') }}
+                            </p>
+                          }
+                        </article>
+                      }
+                    </div>
+                  }
+                </article>
+              </ng-template>
+            </mat-expansion-panel>
+          }
         }
-      }
+      </mat-accordion>
     </section>
   } @else if (step() === 2) {
-    <section>
-      <div class="section-heading">
+    <section class="restore-selection">
+      <header class="restore-selection__header">
         <div>
-          <h3>{{ t.gettext('Select tables') }}</h3>
+          <h3>{{ t.gettext('Select restore destinations') }}</h3>
           <p>
             {{
               t.gettext('Only selected SQL tables and buckets can be modified.')
             }}
           </p>
         </div>
-        <div>
+
+        <div class="restore-selection__actions">
           <button
-            mat-button
+            mat-stroked-button
             type="button"
             (click)="selectAll(true)">
             {{ t.gettext('Select all') }}
           </button>
+
           <button
             mat-button
             type="button"
@@ -201,7 +547,7 @@
             {{ t.gettext('Select none') }}
           </button>
         </div>
-      </div>
+      </header>
 
       <mat-checkbox
         [checked]="plan().clearAllData"
@@ -209,34 +555,58 @@
         {{ t.gettext('Clear selected destinations before restore') }}
       </mat-checkbox>
 
-      <div class="selection-grid">
-        <div>
-          <h4>{{ t.gettext('SQL tables') }}</h4>
-          @for (mapping of filteredMappings(); track mapping.sourceTableName) {
-            <mat-checkbox
-              [checked]="mapping.selected"
-              [disabled]="!mapping.destinationTableName"
-              (change)="setEntitySelected(mapping, $event.checked)">
-              {{ sourceEntity(mapping).tableName }}
-              @if (mapping.destinationTableName !== mapping.sourceTableName) {
-                →
-                {{ mapping.destinationTableName || t.gettext('skipped') }}
-              }
-            </mat-checkbox>
-          }
-        </div>
+      <div class="restore-selection__grid">
+        <section class="restore-selection__group">
+          <h4 id="restore-sql-tables">{{ t.gettext('SQL tables') }}</h4>
 
-        <div>
-          <h4>{{ t.gettext('Bucket controllers') }}</h4>
-          @for (name of data.report.snapshotBucketControllers; track name) {
-            <mat-checkbox
-              [checked]="isBucketSelected(name)"
-              [disabled]="!data.report.currentBucketControllers.includes(name)"
-              (change)="setBucketSelected(name, $event.checked)">
-              {{ name }}
-            </mat-checkbox>
-          }
-        </div>
+          <mat-selection-list
+            aria-labelledby="restore-sql-tables"
+            (selectionChange)="onTableSelectionChange($event)">
+            @for (
+              mapping of filteredMappings();
+              track mapping.sourceTableName
+            ) {
+              <mat-list-option
+                [value]="mapping"
+                [selected]="mapping.selected"
+                [disabled]="!mapping.destinationTableName">
+                {{ sourceEntity(mapping).tableName }}
+                @if (mapping.destinationTableName !== mapping.sourceTableName) {
+                  → {{ mapping.destinationTableName || t.gettext('skipped') }}
+                }
+              </mat-list-option>
+            } @empty {
+              <p class="restore-selection__empty">
+                {{ t.gettext('No SQL tables to display.') }}
+              </p>
+            }
+          </mat-selection-list>
+        </section>
+
+        <section class="restore-selection__group">
+          <h4 id="restore-bucket-controllers">
+            {{ t.gettext('Bucket controllers') }}
+          </h4>
+
+          <mat-selection-list
+            aria-labelledby="restore-bucket-controllers"
+            (selectionChange)="onBucketSelectionChange($event)">
+            @for (name of data.report.snapshotBucketControllers; track name) {
+              <mat-list-option
+                [value]="name"
+                [selected]="isBucketSelected(name)"
+                [disabled]="
+                  !data.report.currentBucketControllers.includes(name)
+                ">
+                {{ name }}
+              </mat-list-option>
+            } @empty {
+              <p class="restore-selection__empty">
+                {{ t.gettext('No bucket controllers in the snapshot.') }}
+              </p>
+            }
+          </mat-selection-list>
+        </section>
       </div>
     </section>
   } @else {
@@ -257,6 +627,61 @@
         <span>{{ t.gettext('restore mode') }}</span>
       </div>
 
+      <mat-accordion
+        class="preview-mappings"
+        multi>
+        @for (mapping of selectedMappings(); track mapping.sourceTableName) {
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                {{ sourceEntity(mapping).tableName }} →
+                {{ mapping.destinationTableName }}
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <ng-template matExpansionPanelContent>
+              <h5>{{ t.gettext('Column mappings') }}</h5>
+              @for (
+                columnMapping of mapping.columns;
+                track columnMapping.sourceColumn
+              ) {
+                <p>
+                  <code>{{ columnMapping.sourceColumn }}</code>
+                  →
+                  {{ columnMapping.destinationColumn || t.gettext('Skipped') }}
+                </p>
+              }
+
+              @if (mapping.columnValues?.length) {
+                <h5>{{ t.gettext('Generated destination values') }}</h5>
+                @for (
+                  valueMapping of mapping.columnValues;
+                  track valueMapping.destinationColumn
+                ) {
+                  <p>
+                    <code>{{ valueMapping.destinationColumn }}</code>
+                    →
+                    {{
+                      strategyDescription(
+                        mapping,
+                        valueMapping.destinationColumn
+                      )
+                    }}
+                  </p>
+                }
+                <small>
+                  {{
+                    t.gettext(
+                      'Random values, UUIDs, timestamps, and generated hashes are created during restore; they are not previewed as fixed row values.'
+                    )
+                  }}
+                </small>
+              }
+            </ng-template>
+          </mat-expansion-panel>
+        }
+      </mat-accordion>
+
       @if (validating()) {
         <p role="status">{{ t.gettext('Validating restore plan…') }}</p>
       } @else if (validation(); as result) {
@@ -264,7 +689,7 @@
           <p class="valid">
             {{
               t.gettext(
-                'The restore plan is valid. It will be revalidated immediately before execution.'
+                '✓ All required destination columns are resolved. ✓ Column types are compatible. ✓ Ready to restore; the plan will be revalidated before execution.'
               )
             }}
           </p>

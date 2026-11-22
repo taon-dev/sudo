@@ -4,74 +4,134 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:217
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:150
+msgid "Logout could not be confirmed. Please retry."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:354
 msgid "Creating raw migration snapshot"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:243
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:380
 msgid "Stop requested; the current safe operation will finish first."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:246
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:383
 msgid "This operation cannot be stopped at this stage."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:261
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:398
 msgid "Analyzing raw migration snapshot"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:289
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:427
 msgid "Restoring raw migration snapshot"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:304
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:445
 msgid "Permanently delete this raw migration snapshot?"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:310
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:451
 msgid "Deleting raw migration snapshot"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:313
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:454
 msgid "Snapshot deleted."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:334
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:475
 msgid "Name for imported snapshot"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:344
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:485
 msgid "Uploading raw migration ZIP ([[ size ]])"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:356
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:497
 msgid "Importing raw migration ZIP"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:361
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:502
 msgid "Snapshot imported: "
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:367
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:508
 msgid "Upload cancelled. The unfinished multipart upload was aborted."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:439
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:580
 msgid "Raw migration failed."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:442
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:583
 msgid "Snapshot creation was stopped."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:446
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:587
 msgid "Snapshot created: "
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:447
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:588
 msgid "Snapshot restored."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:459
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:615
+msgid "The restore succeeded, but its acknowledgement could not be saved in browser storage. Keep this page open until you log out."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:649
+msgid "The pending raw migration acknowledgement is invalid. Log out to clear the current session safely."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:660
+msgid "Could not read the pending restore acknowledgement."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:688
+msgid "Raw migration restored successfully. Sign in again."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:721
+msgid "Authentication state could not be loaded. Retry logout."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:755
+msgid "Logout could not be confirmed. Your restore acknowledgement remains pending; retry logout."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:767
+msgid "You are signed out, but the pending acknowledgement could not be cleared. Retry to finish safely."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:781
 msgid "Raw migration operation failed."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:65
+msgid "Raw Migration Restored Successfully"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:67
+msgid "The raw migration has been restored successfully."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:70
+msgid "Your current session may no longer be valid because database records could have changed."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:77
+msgid "For security and consistency, you need to sign in again."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:98
+msgid "Logging out…"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:100
+msgid "Retry Log Out"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component.ts:101
+msgid "OK — Log Out"
 msgstr ""

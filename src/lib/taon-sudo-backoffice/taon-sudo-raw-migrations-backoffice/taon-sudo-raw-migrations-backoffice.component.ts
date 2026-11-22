@@ -10,14 +10,26 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterOutlet } from '@angular/router';
 import { Translation } from '@taon-dev/i18n/src';
+import {
+  TaonSessionApiService,
+  TaonSessionConfigService,
+  TaonSessionState,
+  TaonSessionStateService,
+} from '@taon-dev/session/src';
 import { firstValueFrom } from 'rxjs';
+import { filter, take, tap, timeout } from 'rxjs/operators';
 import { Taon } from 'taon/src';
 
 import {
@@ -35,6 +47,114 @@ import {
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
 
+interface PendingRawMigrationRestoreAcknowledgement {
+  version: 1;
+  type: 'raw-migration-restore-success';
+  snapshotId: string;
+  contextName: string;
+  createdAt: string;
+}
+
+interface RawMigrationRestoreSuccessDialogData {
+  onLogout: () => Promise<void>;
+}
+
+@Component({
+  selector: 'taon-sudo-raw-migration-restore-success',
+  template: `
+    <h2 mat-dialog-title>{{ t.gettext('Raw Migration Restored Successfully') }}</h2>
+    <mat-dialog-content>
+      <p>{{ t.gettext('The raw migration has been restored successfully.') }}</p>
+      <p>
+        {{
+          t.gettext(
+            'Your current session may no longer be valid because database records could have changed.'
+          )
+        }}
+      </p>
+      <p>
+        {{
+          t.gettext(
+            'For security and consistency, you need to sign in again.'
+          )
+        }}
+      </p>
+      @if (error()) {
+        <p
+          class="error"
+          role="alert">
+          {{ error() }}
+        </p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="logout()">
+        {{
+          busy()
+            ? t.gettext('Logging out…')
+            : attempted()
+              ? t.gettext('Retry Log Out')
+              : t.gettext('OK — Log Out')
+        }}
+      </button>
+    </mat-dialog-actions>
+  `,
+  imports: [MatButtonModule, MatDialogModule],
+  styles: [
+    `
+      :host {
+        display: block;
+        max-width: min(32rem, calc(100vw - 2rem));
+      }
+      mat-dialog-content {
+        line-height: 1.5;
+      }
+      .error {
+        color: #b3261e;
+      }
+    `,
+  ],
+})
+class RawMigrationRestoreSuccessDialogComponent {
+  readonly t = t.for(this);
+
+  readonly busy = signal(false);
+
+  readonly attempted = signal(false);
+
+  readonly error = signal('');
+
+  private readonly data = inject<RawMigrationRestoreSuccessDialogData>(
+    MAT_DIALOG_DATA,
+  );
+
+  private readonly dialogRef = inject<
+    MatDialogRef<RawMigrationRestoreSuccessDialogComponent, boolean>
+  >(MatDialogRef);
+
+  async logout(): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
+    this.attempted.set(true);
+    try {
+      await this.data.onLogout();
+      this.dialogRef.close(true);
+    } catch (error) {
+      this.error.set(
+        error instanceof Error
+          ? error.message
+          : this.t.gettext('Logout could not be confirmed. Please retry.'),
+      );
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
 @Component({
   selector: 'app-taon-sudo-raw-migrations-backoffice',
   templateUrl: './taon-sudo-raw-migrations-backoffice.component.html',
@@ -50,17 +170,29 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
     MatProgressBarModule,
     MatSelectModule,
   ],
-  providers: [TaonSudoRawMigrationsBackofficeApiService],
+  providers: [
+    TaonSudoRawMigrationsBackofficeApiService,
+    TaonSessionApiService,
+    TaonSessionConfigService,
+    TaonSessionStateService,
+  ],
 })
 export class TaonSudoRawMigrationsBackofficeComponent
   implements OnInit, OnDestroy
 {
+  private static restoreSuccessDialogOpen = false;
+
+  private static readonly pendingRestoreStorageKey =
+    'taon-dev:sudo:raw-migration-restore-ack:v1';
+
   //#region fields & getters
   t = t.for(this);
 
   private readonly api = inject(TaonSudoRawMigrationsBackofficeApiService);
 
   private readonly dialog = inject(MatDialog);
+
+  private readonly sessionState = inject(TaonSessionStateService);
 
   readonly contexts = signal<string[]>([]);
 
@@ -94,11 +226,16 @@ export class TaonSudoRawMigrationsBackofficeComponent
   private uploadAbortController: AbortController | null = null;
 
   private destroyed = false;
+
+  private pendingAcknowledgement:
+    | PendingRawMigrationRestoreAcknowledgement
+    | undefined;
   //#endregion
 
   //#region methods / ng on init
   ngOnInit(): void {
     void this.loadContexts();
+    this.showPendingRestoreAcknowledgement();
   }
   //#endregion
 
@@ -273,10 +410,11 @@ export class TaonSudoRawMigrationsBackofficeComponent
               TaonSudoRawMigrationRestorePlan
             >(TaonSudoRawMigrationRestoreEditorComponent, {
               data: { contextName: context, report, api: this.api },
-              width: 'min(96vw, 1200px)',
-              maxWidth: '96vw',
-              height: 'min(94vh, 900px)',
-              maxHeight: '94vh',
+              panelClass: 'raw-migration-restore-dialog',
+              width: '100vw',
+              maxWidth: '100vw',
+              height: '100dvh',
+              maxHeight: '100dvh',
               disableClose: true,
             })
             .afterClosed(),
@@ -290,6 +428,9 @@ export class TaonSudoRawMigrationsBackofficeComponent
         );
         const job = await this.api.restoreSnapshot(context, snapshot.id, plan);
         await this.followJob(job);
+        if (this.activeJob()?.status === 'completed') {
+          this.requireRestoreAcknowledgement(context, snapshot.id);
+        }
       },
     );
   }
@@ -448,6 +589,187 @@ export class TaonSudoRawMigrationsBackofficeComponent
       );
     }
     await this.loadSnapshots();
+  }
+  //#endregion
+
+  //#region methods / require restore acknowledgement
+  private requireRestoreAcknowledgement(
+    contextName: string,
+    snapshotId: string,
+  ): void {
+    const acknowledgement: PendingRawMigrationRestoreAcknowledgement = {
+      version: 1,
+      type: 'raw-migration-restore-success',
+      contextName,
+      snapshotId,
+      createdAt: new Date().toISOString(),
+    };
+    this.pendingAcknowledgement = acknowledgement;
+    try {
+      globalThis.localStorage.setItem(
+        TaonSudoRawMigrationsBackofficeComponent.pendingRestoreStorageKey,
+        JSON.stringify(acknowledgement),
+      );
+    } catch (error) {
+      this.errorMessage.set(
+        this.t.gettext(
+          'The restore succeeded, but its acknowledgement could not be saved in browser storage. Keep this page open until you log out.',
+        ),
+      );
+      console.error('Could not persist raw migration restore acknowledgement.', error);
+    }
+    this.openRestoreSuccessDialog();
+  }
+
+  private showPendingRestoreAcknowledgement(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      const raw = globalThis.localStorage.getItem(
+        TaonSudoRawMigrationsBackofficeComponent.pendingRestoreStorageKey,
+      );
+      if (!raw) {
+        return;
+      }
+      const parsed: unknown = JSON.parse(raw);
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
+        (parsed as Partial<PendingRawMigrationRestoreAcknowledgement>).version !==
+          1 ||
+        (parsed as Partial<PendingRawMigrationRestoreAcknowledgement>).type !==
+          'raw-migration-restore-success' ||
+        typeof (parsed as Partial<PendingRawMigrationRestoreAcknowledgement>)
+          .snapshotId !== 'string' ||
+        typeof (parsed as Partial<PendingRawMigrationRestoreAcknowledgement>)
+          .contextName !== 'string'
+      ) {
+        throw new Error(
+          this.t.gettext(
+            'The pending raw migration acknowledgement is invalid. Log out to clear the current session safely.',
+          ),
+        );
+      }
+      this.pendingAcknowledgement =
+        parsed as PendingRawMigrationRestoreAcknowledgement;
+    } catch (error) {
+      this.errorMessage.set(
+        error instanceof Error
+          ? error.message
+          : this.t.gettext('Could not read the pending restore acknowledgement.'),
+      );
+      this.pendingAcknowledgement = {
+        version: 1,
+        type: 'raw-migration-restore-success',
+        contextName: this.selectedContext(),
+        snapshotId: 'unknown',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    this.openRestoreSuccessDialog();
+  }
+
+  private openRestoreSuccessDialog(): void {
+    if (
+      !this.pendingAcknowledgement ||
+      TaonSudoRawMigrationsBackofficeComponent.restoreSuccessDialogOpen
+    ) {
+      return;
+    }
+    TaonSudoRawMigrationsBackofficeComponent.restoreSuccessDialogOpen = true;
+    const dialogRef = this.dialog.open(
+      RawMigrationRestoreSuccessDialogComponent,
+      {
+        data: { onLogout: () => this.logoutAfterRestore() },
+        disableClose: true,
+        closeOnNavigation: false,
+        hasBackdrop: true,
+        ariaLabel: this.t.gettext(
+          'Raw migration restored successfully. Sign in again.',
+        ),
+      },
+    );
+    dialogRef.afterClosed().subscribe(() => {
+      TaonSudoRawMigrationsBackofficeComponent.restoreSuccessDialogOpen = false;
+      if (!this.pendingAcknowledgement) {
+        globalThis.location.reload();
+      }
+    });
+  }
+
+  private async logoutAfterRestore(): Promise<void> {
+    if (!this.sessionState.active) {
+      this.sessionState.activate({
+        from: 'raw-migration-restore-logout',
+      });
+    }
+    try {
+      await firstValueFrom(
+        this.sessionState.currentState$.pipe(
+          filter(
+            state =>
+              state.currentState !==
+              TaonSessionState.LOADING_INITIAL_AUTH_INFO,
+          ),
+          take(1),
+          timeout({ first: 15000 }),
+        ),
+      );
+    } catch {
+      throw new Error(
+        this.t.gettext(
+          'Authentication state could not be loaded. Retry logout.',
+        ),
+      );
+    }
+
+    if (!this.sessionState.isLoggedIn()) {
+      await firstValueFrom(
+        this.sessionState.taonSessionApiService.logout().pipe(take(1)),
+      );
+      this.sessionState.refresh();
+    } else {
+      let logoutStarted = false;
+      const loggedOut = firstValueFrom(
+        this.sessionState.currentState$.pipe(
+          tap(state => {
+            if (state.currentState === TaonSessionState.LOADING_LOGOUT_INFO) {
+              logoutStarted = true;
+            }
+          }),
+          filter(
+            state =>
+              logoutStarted &&
+              state.currentState === TaonSessionState.LOGIN_OR_REGISTER,
+          ),
+          take(1),
+          timeout({ first: 15000 }),
+        ),
+      );
+      this.sessionState.logout();
+      try {
+        await loggedOut;
+      } catch {
+        throw new Error(
+          this.t.gettext(
+            'Logout could not be confirmed. Your restore acknowledgement remains pending; retry logout.',
+          ),
+        );
+      }
+    }
+    try {
+      globalThis.localStorage.removeItem(
+        TaonSudoRawMigrationsBackofficeComponent.pendingRestoreStorageKey,
+      );
+    } catch {
+      throw new Error(
+        this.t.gettext(
+          'You are signed out, but the pending acknowledgement could not be cleared. Retry to finish safely.',
+        ),
+      );
+    }
+    this.pendingAcknowledgement = undefined;
   }
   //#endregion
 

@@ -1,5 +1,72 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  width: 100%;
+}
+
+.restore-selection {
+  display: grid;
+  gap: 1rem;
+}
+
+.restore-selection__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+
+  h3 {
+    margin: 0;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+  }
+}
+
+.restore-selection__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.restore-selection__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
+.restore-selection__group {
+  min-width: 0;
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-radius: 0.75rem;
+
+  h4 {
+    margin: 0;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant, #ccc);
+  }
+
+  mat-selection-list {
+    max-height: 22rem;
+    overflow-y: auto;
+  }
+}
+
+.restore-selection__empty {
+  margin: 0;
+  padding: 0.75rem 1rem;
+}
+
+@media (max-width: 700px) {
+  .restore-selection__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .editor-header,
@@ -12,7 +79,12 @@
 }
 
 .editor-header {
-  padding: 1rem 1.5rem 0;
+  background: var(--mat-sys-surface, white);
+  flex: 0 0 auto;
+  padding: 1rem 1.5rem 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .editor-header h2,
@@ -38,10 +110,15 @@ h3 {
 }
 
 .steps {
+  background: var(--mat-sys-surface, white);
   border-bottom: 1px solid #ddd;
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: repeat(4, 1fr);
-  margin: 1rem 1.5rem 0;
+  margin: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .steps button {
@@ -73,12 +150,30 @@ h3 {
 }
 
 mat-dialog-content {
-  min-height: 55vh;
-  padding-top: 1rem;
+  flex: 1 1 auto;
+  margin: 0 !important;
+  max-height: none !important;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+}
+
+.table-filter-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .search {
-  width: min(28rem, 100%);
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.table-selector {
+  flex: 0 1 20rem;
+  min-width: min(14rem, 100%);
 }
 
 .mapping-list,
@@ -116,11 +211,83 @@ mat-dialog-content {
   margin-top: 0.5rem;
 }
 
+.missing-destination-columns {
+  border-top: 1px solid #ddd;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.missing-destination-columns h5 {
+  margin: 0 0 0.75rem;
+}
+
+.missing-column {
+  align-items: start;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(12rem, 1fr) repeat(2, minmax(12rem, 1fr));
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+}
+
+.missing-column.required-unmapped {
+  border-color: #b3261e;
+  border-inline-start-width: 4px;
+}
+
+.column-details strong,
+.column-details small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.column-details small {
+  color: #555;
+  margin-top: 0.35rem;
+}
+
+.value-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.value-inputs mat-form-field {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+}
+
+.value-hint,
+.column-error,
+.column-valid {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.column-error {
+  color: #b3261e;
+}
+
+.column-valid,
+.valid {
+  color: #2e7d32;
+}
+
 .selection-grid {
   display: grid;
   gap: 2rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 1rem;
+  background: var(--mat-sys-surface, white);
+  border-top: 1px solid #ddd;
+  flex: 0 0 auto;
+  margin: 0 !important;
+  min-height: 4rem;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
 .preview-summary {
@@ -128,6 +295,30 @@ mat-dialog-content {
   gap: 0.5rem 1rem;
   grid-template-columns: auto 1fr;
   margin: 1.5rem 0;
+}
+
+.preview-mappings {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.preview-mappings article {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.preview-mappings h4,
+.preview-mappings h5,
+.preview-mappings p {
+  margin: 0.35rem 0;
+}
+
+.preview-mappings small {
+  display: block;
+  margin-top: 0.75rem;
 }
 
 .issues {
@@ -157,6 +348,14 @@ mat-dialog-content {
 
   .steps {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .missing-column {
+    grid-template-columns: 1fr;
+  }
+
+  .missing-column > * {
+    grid-column: 1;
   }
 
   .mapping-row,

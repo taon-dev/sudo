@@ -23,6 +23,7 @@ export interface TaonSudoRawMigrationColumn {
   primary?: boolean;
   nullable?: boolean;
   generated?: boolean;
+  unique?: boolean;
   default?: string;
 }
 
@@ -88,7 +89,58 @@ export interface TaonSudoRawMigrationEntityMapping {
     sourceColumn: string;
     destinationColumn: string | null;
   }[];
+  columnValues?: TaonSudoRawMigrationColumnValueMapping[];
 }
+
+export type TaonSudoRawMigrationColumnValueStrategy =
+  | 'set-null'
+  | 'database-default'
+  | 'constant'
+  | 'sequential'
+  | 'random'
+  | 'uuid'
+  | 'hash'
+  | 'current-timestamp'
+  | 'copy';
+
+export type TaonSudoRawMigrationColumnValueMapping =
+  | {
+      destinationColumn: string;
+      strategy?: undefined;
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'set-null' | 'database-default' | 'uuid' | 'current-timestamp';
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'constant';
+      value?: string | number | boolean;
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'sequential';
+      start?: number;
+      step?: number;
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'random';
+      min?: number;
+      max?: number;
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'hash';
+      algorithm?: 'sha256';
+      mode?: 'deterministic' | 'random';
+      sourceColumns?: string[];
+    }
+  | {
+      destinationColumn: string;
+      strategy: 'copy';
+      sourceColumn?: string;
+    };
 
 export interface TaonSudoRawMigrationRestorePlan {
   format: 'taon-sudo-raw-migration-restore-plan';
@@ -114,6 +166,8 @@ export interface TaonSudoRawMigrationPlanIssue {
     | 'DUPLICATE_DESTINATION_COLUMN'
     | 'INCOMPATIBLE_COLUMN_TYPE'
     | 'MISSING_REQUIRED_COLUMN'
+    | 'INVALID_COLUMN_VALUE_STRATEGY'
+    | 'COLUMN_VALUE_MAY_CONFLICT'
     | 'MISSING_PRIMARY_KEY'
     | 'UNKNOWN_BUCKET_CONTROLLER'
     | 'FOREIGN_KEY_DEPENDENCY';

@@ -9,6 +9,7 @@ export * from './start-cli';
 export * from './taon-sudo/taon-sudo-raw-migration.controller'; 
 export * from './taon-sudo/taon-sudo-raw-migration.models'; 
 export * from './taon-sudo/taon-sudo-raw-migration.repository'; 
+export * from './taon-sudo/taon-sudo-raw-migration.utils'; 
 export * from './taon-sudo/taon-sudo-snapshot.entity'; 
 export * from './taon-sudo/taon-sudo-upload-storage.controller'; 
 export * from './taon-sudo/taon-sudo.abstract.context'; 

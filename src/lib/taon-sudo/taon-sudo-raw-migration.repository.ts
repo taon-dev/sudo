@@ -30,6 +30,8 @@ import { fse, GlobalStorage, path, UtilsOs } from 'tnp-core/src';
 import {
   TaonSudoRawMigrationBucketController,
   TaonSudoRawMigrationColumn,
+  TaonSudoRawMigrationColumnValueMapping,
+  TaonSudoRawMigrationColumnValueStrategy,
   TaonSudoRawMigrationCompatibilityReport,
   TaonSudoRawMigrationEntity,
   TaonSudoRawMigrationEntityMapping,
@@ -42,6 +44,7 @@ import {
   TaonSudoRawMigrationSchemaEntity,
   TaonSudoRawMigrationSummary,
 } from './taon-sudo-raw-migration.models';
+import { hasColumnValueStrategy } from './taon-sudo-raw-migration.utils';
 import { TaonSudoSnapshotEntity } from './taon-sudo-snapshot.entity';
 import { TaonSudoUtils } from './taon-sudo.utils';
 //#endregion
@@ -53,6 +56,7 @@ async function analyzeRestoreBackend(
   snapshotId: string,
   clearAllData: boolean,
 ): Promise<TaonSudoRawMigrationCompatibilityReport> {
+  //#region @websqlFunc
   this.requireSqlConnection(context);
   this.assertSnapshotId(snapshotId);
   const manifest = await this.readManifest(context, snapshotId);
@@ -186,6 +190,24 @@ async function analyzeRestoreBackend(
                 destination.propertyPath === column.propertyPath),
           )?.databaseName || null,
       })),
+      columnValues: (compatibility.current?.columns || [])
+        .filter(
+          destination =>
+            !compatibility.snapshot.columns.some(
+              column =>
+                column.databaseName === destination.databaseName ||
+                (!!column.propertyPath &&
+                  column.propertyPath === destination.propertyPath),
+            ),
+        )
+        .map(destination => ({
+          destinationColumn: destination.databaseName,
+          ...(destination.nullable
+            ? { strategy: 'set-null' as const }
+            : destination.default !== undefined
+              ? { strategy: 'database-default' as const }
+              : {}),
+        })),
     })),
     bucketControllers: snapshotBucketControllers.filter(name =>
       currentBucketControllers.includes(name),
@@ -220,12 +242,89 @@ async function analyzeRestoreBackend(
       newBucketControllers.length === 0,
     suggestedPlan,
   };
+  //#endregion
 }
 //#endregion
+
+function isColumnValueMappingShape(
+  value: unknown,
+): value is TaonSudoRawMigrationColumnValueMapping {
+  //#region @websqlFunc
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const mapping = value as Record<string, unknown>;
+
+  if (typeof mapping.destinationColumn !== 'string') {
+    return false;
+  }
+
+  switch (mapping.strategy) {
+    case undefined:
+    case 'set-null':
+    case 'database-default':
+    case 'uuid':
+    case 'current-timestamp':
+      return true;
+
+    case 'constant': {
+      const { value: constant } = mapping;
+      return (
+        constant === undefined ||
+        typeof constant === 'string' ||
+        typeof constant === 'boolean' ||
+        (typeof constant === 'number' && Number.isFinite(constant))
+      );
+    }
+
+    case 'sequential': {
+      const { start, step } = mapping;
+      return (
+        (start === undefined ||
+          (typeof start === 'number' && Number.isFinite(start))) &&
+        (step === undefined ||
+          (typeof step === 'number' && Number.isFinite(step)))
+      );
+    }
+
+    case 'random': {
+      const { min, max } = mapping;
+      return (
+        (min === undefined ||
+          (typeof min === 'number' && Number.isSafeInteger(min))) &&
+        (max === undefined ||
+          (typeof max === 'number' && Number.isSafeInteger(max)))
+      );
+    }
+
+    case 'hash': {
+      const { algorithm, mode, sourceColumns } = mapping;
+      return (
+        (algorithm === undefined || algorithm === 'sha256') &&
+        (mode === undefined || mode === 'deterministic' || mode === 'random') &&
+        (sourceColumns === undefined ||
+          (Array.isArray(sourceColumns) &&
+            sourceColumns.every(column => typeof column === 'string')))
+      );
+    }
+
+    case 'copy':
+      return (
+        mapping.sourceColumn === undefined ||
+        typeof mapping.sourceColumn === 'string'
+      );
+
+    default:
+      return false;
+  }
+  //#endregion
+}
 
 function isRestorePlanShape(
   value: unknown,
 ): value is TaonSudoRawMigrationRestorePlan {
+  //#region @websqlFunc
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }
@@ -252,11 +351,190 @@ function isRestorePlanShape(
             typeof column.sourceColumn === 'string' &&
             (column.destinationColumn === null ||
               typeof column.destinationColumn === 'string'),
-        ),
+        ) &&
+        (mapping.columnValues === undefined ||
+          (Array.isArray(mapping.columnValues) &&
+            mapping.columnValues.every(isColumnValueMappingShape))),
     ) &&
     Array.isArray(plan.bucketControllers) &&
     plan.bucketControllers.every(name => typeof name === 'string')
   );
+  //#endregion
+}
+
+function sqlTypeFamily(
+  type: string | undefined,
+): 'number' | 'string' | 'boolean' | 'date' | 'other' {
+  //#region @websqlFunc
+  const normalized = (type || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/\(.*/, '');
+  if (
+    /^(tinyint|smallint|mediumint|int|integer|bigint|serial|smallserial|bigserial|decimal|numeric|float|double|real|number)/.test(
+      normalized,
+    )
+  ) {
+    return 'number';
+  }
+  if (/^(bool|boolean)$/.test(normalized)) {
+    return 'boolean';
+  }
+  if (/^(date|datetime|timestamp|timestamptz|time|timetz)/.test(normalized)) {
+    return 'date';
+  }
+  if (
+    /^(char|varchar|nvarchar|nchar|text|string|clob|uuid|enum|json)/.test(
+      normalized,
+    )
+  ) {
+    return 'string';
+  }
+  return 'other';
+  //#endregion
+}
+
+function isIntegerSqlType(type: string | undefined): boolean {
+  //#region @websqlFunc
+  const normalized = (type || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/\(.*/, '');
+  return /^(tinyint|smallint|mediumint|int|integer|bigint|serial|smallserial|bigserial)/.test(
+    normalized,
+  );
+  //#endregion
+}
+
+
+
+function columnValueStrategyError(
+  mapping: TaonSudoRawMigrationColumnValueMapping,
+  destination: TaonSudoRawMigrationColumn,
+  source: TaonSudoRawMigrationSchemaEntity,
+  repository: TaonSudoRawMigrationRepository,
+): string | undefined {
+  //#region @websqlFunc
+  const strategy = mapping.strategy;
+  if (!hasColumnValueStrategy(mapping)) {
+    return undefined;
+  }
+
+  const family = sqlTypeFamily(destination.type);
+  const numeric = family === 'number';
+  const string = family === 'string';
+  switch (strategy) {
+    case 'set-null':
+      return destination.nullable
+        ? undefined
+        : 'Set NULL is only valid for nullable columns.';
+    case 'database-default':
+      return destination.default !== undefined
+        ? undefined
+        : 'This column has no database default.';
+    case 'constant': {
+      if (mapping.value === undefined) {
+        return 'A constant value is required.';
+      }
+      if (numeric && typeof mapping.value !== 'number') {
+        return 'A numeric column requires a numeric constant.';
+      }
+      if (
+        numeric &&
+        isIntegerSqlType(destination.type) &&
+        typeof mapping.value === 'number' &&
+        !Number.isInteger(mapping.value)
+      ) {
+        return 'An integer column requires an integer constant.';
+      }
+      if (family === 'boolean' && typeof mapping.value !== 'boolean') {
+        return 'A boolean column requires true or false.';
+      }
+      if (family === 'date') {
+        if (
+          typeof mapping.value !== 'string' ||
+          Number.isNaN(Date.parse(mapping.value))
+        ) {
+          return 'A date/time column requires a valid date string.';
+        }
+      } else if (
+        string &&
+        typeof mapping.value !== 'string' &&
+        typeof mapping.value !== 'number'
+      ) {
+        return 'A string column requires a string or numeric constant.';
+      }
+      if (
+        typeof mapping.value === 'number' &&
+        !Number.isFinite(mapping.value)
+      ) {
+        return 'The constant must be a finite number.';
+      }
+      return undefined;
+    }
+    case 'sequential':
+      return (numeric || string) &&
+        typeof mapping.start === 'number' &&
+        Number.isFinite(mapping.start) &&
+        typeof mapping.step === 'number' &&
+        Number.isFinite(mapping.step) &&
+        mapping.step !== 0 &&
+        (!numeric ||
+          !isIntegerSqlType(destination.type) ||
+          (Number.isInteger(mapping.start) && Number.isInteger(mapping.step)))
+        ? undefined
+        : 'Sequential values require a numeric or string column, a finite start and non-zero step; integer columns require integer values.';
+    case 'random':
+      return (numeric || string) &&
+        Number.isSafeInteger(mapping.min) &&
+        Number.isSafeInteger(mapping.max) &&
+        mapping.min! <= mapping.max!
+        ? undefined
+        : 'Random values require a numeric or string column and a valid integer range.';
+    case 'uuid':
+      return string
+        ? undefined
+        : 'UUID values are only valid for string columns.';
+    case 'hash': {
+      if (!string) {
+        return 'Hash values are only valid for string columns.';
+      }
+      if (mapping.algorithm !== 'sha256') {
+        return 'Select the supported SHA-256 hash algorithm.';
+      }
+      if (mapping.mode === 'random') {
+        return mapping.sourceColumns?.length
+          ? 'Random hashes cannot use source columns.'
+          : undefined;
+      }
+      if (mapping.mode !== 'deterministic' || !mapping.sourceColumns?.length) {
+        return 'Deterministic hashes require at least one source column.';
+      }
+      const sourceNames = new Set(
+        source.columns.map(column => column.databaseName),
+      );
+      return mapping.sourceColumns.every(name => sourceNames.has(name))
+        ? undefined
+        : 'A hash source column does not exist in the snapshot.';
+    }
+    case 'current-timestamp':
+      return family === 'date'
+        ? undefined
+        : 'Current timestamp is only valid for date/time columns.';
+    case 'copy': {
+      const sourceColumn = source.columns.find(
+        column => column.databaseName === mapping.sourceColumn,
+      );
+      if (!sourceColumn) {
+        return 'Select a source snapshot column to copy.';
+      }
+      return repository.areColumnTypesCompatible(sourceColumn, destination)
+        ? undefined
+        : 'The selected source column has an incompatible type.';
+    }
+  }
+  return 'Unsupported value-generation strategy.';
+  //#endregion
 }
 
 //#region validate plan
@@ -265,13 +543,16 @@ function validatePlan(
   report: TaonSudoRawMigrationCompatibilityReport,
   plan: TaonSudoRawMigrationRestorePlan,
 ): TaonSudoRawMigrationPlanValidation {
+  //#region @websqlFunc
   const errors: TaonSudoRawMigrationPlanIssue[] = [];
   const warnings: TaonSudoRawMigrationPlanIssue[] = [];
   const error = (
     code: TaonSudoRawMigrationPlanIssue['code'],
     message: string,
     details: Partial<TaonSudoRawMigrationPlanIssue> = {},
-  ) => errors.push({ code, message, ...details });
+  ): void => {
+    errors.push({ code, message, ...details });
+  };
 
   if (!isRestorePlanShape(plan)) {
     error('INVALID_FORMAT', 'The restore plan format is invalid.');
@@ -434,6 +715,73 @@ function validatePlan(
         );
       }
     }
+    const valueDestinations = new Set<string>();
+    for (const valueMapping of mapping.columnValues || []) {
+      const destinationColumn = destination.columns.find(
+        column => column.databaseName === valueMapping.destinationColumn,
+      );
+      if (!destinationColumn) {
+        error(
+          'UNKNOWN_DESTINATION_COLUMN',
+          `Destination column "${valueMapping.destinationColumn}" does not exist.`,
+          {
+            destinationTableName: destination.tableName,
+            destinationColumn: valueMapping.destinationColumn,
+          },
+        );
+        continue;
+      }
+      if (
+        mappedDestinations.has(destinationColumn.databaseName) ||
+        valueDestinations.has(destinationColumn.databaseName)
+      ) {
+        error(
+          'DUPLICATE_DESTINATION_COLUMN',
+          `Destination column "${destination.tableName}.${destinationColumn.databaseName}" has more than one value mapping.`,
+          {
+            destinationTableName: destination.tableName,
+            destinationColumn: destinationColumn.databaseName,
+          },
+        );
+        continue;
+      }
+      valueDestinations.add(destinationColumn.databaseName);
+      if (!hasColumnValueStrategy(valueMapping)) {
+        continue;
+      }
+      const strategyError = columnValueStrategyError(
+        valueMapping,
+        destinationColumn,
+        source,
+        this,
+      );
+      if (strategyError) {
+        error(
+          'INVALID_COLUMN_VALUE_STRATEGY',
+          `Value strategy for "${destination.tableName}.${destinationColumn.databaseName}" is invalid: ${strategyError}`,
+          {
+            sourceTableName: source.tableName,
+            destinationTableName: destination.tableName,
+            destinationColumn: destinationColumn.databaseName,
+          },
+        );
+        continue;
+      }
+      mappedDestinations.add(destinationColumn.databaseName);
+      if (
+        (valueMapping.strategy === 'random' ||
+          (valueMapping.strategy === 'hash' &&
+            valueMapping.mode === 'random')) &&
+        (destinationColumn.primary || destinationColumn.unique)
+      ) {
+        warnings.push({
+          code: 'COLUMN_VALUE_MAY_CONFLICT',
+          message: `Generated values for "${destination.tableName}.${destinationColumn.databaseName}" are not guaranteed to be unique; a database constraint may reject the restore.`,
+          destinationTableName: destination.tableName,
+          destinationColumn: destinationColumn.databaseName,
+        });
+      }
+    }
     if (mappedDestinations.size === 0) {
       error(
         'INVALID_FORMAT',
@@ -516,6 +864,7 @@ function validatePlan(
     selectedEntityCount: selected.length,
     selectedBucketControllerCount: bucketNames.size,
   };
+  //#endregion
 }
 //#endregion
 
@@ -533,6 +882,7 @@ const RAW_VALUE_MARKER = '__taonSudoRawMigrationValue';
 
 //#region encode raw value
 function encodeRawValue(value: unknown): unknown {
+  //#region @websqlFunc
   if (typeof value === 'bigint') {
     return { [RAW_VALUE_MARKER]: 'bigint', value: value.toString() };
   }
@@ -572,11 +922,13 @@ function encodeRawValue(value: unknown): unknown {
     return encoded;
   }
   return value;
+  //#endregion
 }
 //#endregion
 
 //#region decode raw value
 function decodeRawValue(value: unknown): unknown {
+  //#region @websqlFunc
   if (Array.isArray(value)) {
     return value.map(decodeRawValue);
   }
@@ -616,6 +968,7 @@ function decodeRawValue(value: unknown): unknown {
     );
   }
   return value;
+  //#endregion
 }
 //#endregion
 
@@ -663,6 +1016,7 @@ class LocalZipRangeReader extends Reader<undefined> {
     offset: number,
     length: number,
   ): Promise<Uint8Array> {
+    //#region @websqlFunc
     //#region @backendFunc
     if (
       !Number.isSafeInteger(offset) ||
@@ -689,6 +1043,7 @@ class LocalZipRangeReader extends Reader<undefined> {
     }
     return result.subarray(0, read);
     //#endregion
+    //#endregion
   }
   //#endregion
 }
@@ -708,6 +1063,7 @@ class R2ZipRangeReader extends Reader<undefined> {
     offset: number,
     length: number,
   ): Promise<Uint8Array> {
+    //#region @websqlFunc
     if (
       !Number.isSafeInteger(offset) ||
       offset < 0 ||
@@ -739,6 +1095,7 @@ class R2ZipRangeReader extends Reader<undefined> {
       reader.releaseLock();
     }
     return data.subarray(0, read);
+    //#endregion
   }
   //#endregion
 }
@@ -763,8 +1120,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     snapshotId: string,
     clearAllData = false,
   ): Promise<TaonSudoRawMigrationCompatibilityReport> {
+    //#region @websqlFunc
     //#region @backendFunc
     return analyzeRestoreBackend.call(this, context, snapshotId, clearAllData);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -774,6 +1133,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     plan: TaonSudoRawMigrationRestorePlan,
   ): Promise<TaonSudoRawMigrationPlanValidation> {
+    //#region @websqlFunc
     //#region @backendFunc
     if (!isRestorePlanShape(plan)) {
       return {
@@ -797,6 +1157,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     );
     return validatePlan.call(this, report, plan);
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -804,8 +1165,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   listSnapshots(
     context: EndpointContext,
   ): Promise<TaonSudoRawMigrationSummary[]> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.listSnapshotsBackend(context);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -816,16 +1179,20 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     name: string,
     options: SnapshotOptions,
   ): Promise<string> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.createSnapshotBackend(context, name, options);
+    //#endregion
     //#endregion
   }
   //#endregion
 
   //#region methods / delete snapshot
   deleteSnapshot(context: EndpointContext, snapshotId: string): Promise<void> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.deleteSnapshotBackend(context, snapshotId);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -836,8 +1203,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     snapshotId: string,
     options: RestoreOptions,
   ): Promise<void> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.restoreSnapshotBackend(context, snapshotId, options);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -847,8 +1216,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     snapshotId: string,
   ): Promise<ReadableStream<Uint8Array>> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.exportSnapshotBackend(context, snapshotId);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -864,8 +1235,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     name: string,
     source?: ImportSnapshotSource,
   ): Promise<TaonSudoRawMigrationSummary> {
+    //#region @websqlFunc
     //#region @backendFunc
     return this.importSnapshotBackend(context, file, name, source);
+    //#endregion
     //#endregion
   }
   //#endregion
@@ -874,6 +1247,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   private async listSnapshotsBackend(
     context: EndpointContext,
   ): Promise<TaonSudoRawMigrationSummary[]> {
+    //#region @websqlFunc
     const prefix = this.contextPrefix(context);
     const ids: string[] = [];
 
@@ -937,6 +1311,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
     }
     return summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    //#endregion
   }
   //#endregion
 
@@ -946,6 +1321,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     name: string,
     options: SnapshotOptions,
   ): Promise<string> {
+    //#region @websqlFunc
     this.requireSqlConnection(context);
     const snapshotName = this.validateSnapshotName(name);
     const id = crypto.randomUUID();
@@ -956,7 +1332,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     let totalBytes = 0;
     let totalFiles = 0;
     let completed = 0;
-    const assertNotCancelled = () => {
+    const assertNotCancelled = (): void => {
       if (options.isCancelled()) {
         throw new RawMigrationCancelledError();
       }
@@ -1248,6 +1624,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
       throw error;
     }
+    //#endregion
   }
   //#endregion
 
@@ -1256,6 +1633,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     snapshotId: string,
   ): Promise<void> {
+    //#region @websqlFunc
     this.assertSnapshotId(snapshotId);
     const manifest = await this.readManifest(context, snapshotId);
     if (!manifest) {
@@ -1292,6 +1670,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
       throw error;
     }
+    //#endregion
   }
   //#endregion
 
@@ -1300,6 +1679,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     snapshotId: string,
   ): Promise<ReadableStream<Uint8Array>> {
+    //#region @websqlFunc
     this.assertSnapshotId(snapshotId);
     const manifest = await this.readManifest(context, snapshotId);
     if (!manifest) {
@@ -1345,6 +1725,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
     })();
     return transform.readable;
+    //#endregion
   }
   //#endregion
 
@@ -1355,6 +1736,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     name: string,
     source?: ImportSnapshotSource,
   ): Promise<TaonSudoRawMigrationSummary> {
+    //#region @websqlFunc
     //#region @backendFunc
     const snapshotName = this.validateSnapshotName(name);
     let zipReader: ZipReader<unknown> | undefined;
@@ -1843,6 +2225,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     }
 
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -1852,6 +2235,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     destinationKey: string,
     entry: FileEntry,
   ): Promise<void> {
+    //#region @websqlFunc
     //#region @backendFunc
 
     this.debugMode &&
@@ -2059,6 +2443,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
 
     return void 0 as any;
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -2068,6 +2453,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     snapshotId: string,
     options: RestoreOptions,
   ): Promise<void> {
+    //#region @websqlFunc
     this.requireSqlConnection(context);
     this.assertSnapshotId(snapshotId);
     const manifest = await this.readManifest(context, snapshotId);
@@ -2359,6 +2745,70 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       completed: orderedEntities.length + selectedBuckets.length,
       total: orderedEntities.length + selectedBuckets.length,
     });
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / generated restore values
+  private randomInteger(min: number, max: number): number {
+    //#region @websqlFunc
+    const lower = BigInt(min);
+    const range = BigInt(max) - lower + 1n;
+    const twoTo64 = 1n << 64n;
+    const limit = twoTo64 - (twoTo64 % range);
+    const sample = new Uint32Array(2);
+    let value: bigint;
+    do {
+      crypto.getRandomValues(sample);
+      value = (BigInt(sample[0]) << 32n) | BigInt(sample[1]);
+    } while (value >= limit);
+    return Number(lower + (value % range));
+    //#endregion
+  }
+
+  private generateUuidV4(): string {
+    //#region @websqlFunc
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'));
+    return [
+      hex.slice(0, 4).join(''),
+      hex.slice(4, 6).join(''),
+      hex.slice(6, 8).join(''),
+      hex.slice(8, 10).join(''),
+      hex.slice(10).join(''),
+    ].join('-');
+    //#endregion
+  }
+
+  private async generateColumnHash(
+    mapping: Extract<
+      TaonSudoRawMigrationColumnValueMapping,
+      { strategy: 'hash' }
+    >,
+    row: Record<string, unknown>,
+  ): Promise<string> {
+    //#region @websqlFunc
+    let source: Uint8Array;
+    if (mapping.mode === 'random') {
+      source = crypto.getRandomValues(new Uint8Array(32));
+    } else {
+      const values = (mapping.sourceColumns || []).map(column => {
+        if (!Object.prototype.hasOwnProperty.call(row, column)) {
+          throw new Error(
+            `Hash source column "${column}" is missing from a snapshot row.`,
+          );
+        }
+        return [column, encodeRawValue(decodeRawValue(row[column]))];
+      });
+      source = new TextEncoder().encode(JSON.stringify(values));
+    }
+    const digest = await crypto.subtle.digest('SHA-256', source as any);
+    return Array.from(new Uint8Array(digest), byte =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('');
+    //#endregion
   }
   //#endregion
 
@@ -2372,6 +2822,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     queryRunner: QueryRunner,
     clearAllData: boolean,
   ): Promise<void> {
+    //#region @websqlFunc
     const connection = context.connection!;
     const metadata = repository.metadata;
     const driver = connection.driver;
@@ -2388,6 +2839,22 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         column.destinationColumn,
       ]),
     );
+    const mappedPrimaryColumns = new Set(
+      mapping.columns
+        .map(column => column.destinationColumn)
+        .filter((name): name is string => name !== null),
+    );
+    const columnValuesByDestination = new Map(
+      (mapping.columnValues || []).map(value => [
+        value.destinationColumn,
+        value,
+      ]),
+    );
+    const uniqueConstraints = [
+      metadata.primaryColumns.map(column => column.databaseName),
+      ...this.uniqueColumnGroups(metadata),
+    ].filter(columns => columns.length > 0);
+    const sequenceIndexes = new Map<string, number>();
 
     const insertBatch = async (
       batch: Record<string, unknown>[],
@@ -2408,8 +2875,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
 
           const hasCompletePrimaryKey =
             primaryColumns.length > 0 &&
-            primaryColumns.every(column =>
-              Object.prototype.hasOwnProperty.call(row, column.databaseName),
+            primaryColumns.every(
+              column =>
+                mappedPrimaryColumns.has(column.databaseName) &&
+                Object.prototype.hasOwnProperty.call(row, column.databaseName),
             );
 
           if (hasCompletePrimaryKey) {
@@ -2428,6 +2897,88 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           }
         }
 
+        for (const [
+          destinationColumn,
+          valueMapping,
+        ] of columnValuesByDestination) {
+          if (
+            !hasColumnValueStrategy(valueMapping) ||
+            !uniqueConstraints.some(
+              constraint =>
+                constraint.includes(destinationColumn) &&
+                constraint.every(column =>
+                  Object.prototype.hasOwnProperty.call(row, column),
+                ),
+            )
+          ) {
+            continue;
+          }
+
+          const applicableConstraints = uniqueConstraints.filter(
+            constraint =>
+              constraint.includes(destinationColumn) &&
+              constraint.every(column =>
+                Object.prototype.hasOwnProperty.call(row, column),
+              ),
+          );
+
+          let retries = 0;
+          while (true) {
+            let conflict = false;
+            for (const constraint of applicableConstraints) {
+              const constraintValues = constraint.map(column => row[column]);
+              if (constraintValues.some(value => value === null)) {
+                continue;
+              }
+
+              const where = constraint
+                .map(column => `${driver.escape(column)} = ?`)
+                .join(' AND ');
+
+              const matches = await queryRunner.query(
+                `SELECT 1 FROM ${tableName} WHERE ${where} LIMIT 1`,
+                constraintValues,
+              );
+
+              if (Array.isArray(matches) && matches.length > 0) {
+                conflict = true;
+                break;
+              }
+            }
+
+            if (!conflict) {
+              break;
+            }
+
+            if (
+              valueMapping.strategy !== 'sequential' ||
+              typeof valueMapping.step !== 'number' ||
+              retries >= 1000
+            ) {
+              throw new Error(
+                `Generated value for unique column "${metadata.tableName}.${destinationColumn}" conflicts with existing data. The restore was rolled back.`,
+              );
+            }
+
+            const next = Number(row[destinationColumn]) + valueMapping.step;
+            if (!Number.isFinite(next)) {
+              throw new Error(
+                `Sequential value overflow for "${metadata.tableName}.${destinationColumn}".`,
+              );
+            }
+
+            const destinationMetadata =
+              columnsByDatabaseName.get(destinationColumn);
+
+            row[destinationColumn] =
+              destinationMetadata &&
+              sqlTypeFamily(String(destinationMetadata.type)) === 'string'
+                ? String(next)
+                : next;
+            retries++;
+          }
+        }
+
         const escapedColumns = columnNames
           .map(column => driver.escape(column))
           .join(', ');
@@ -2438,10 +2989,10 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
 
         await queryRunner.query(
           `
-            INSERT INTO ${tableName}
-            (${escapedColumns})
-            VALUES (${placeholders})
-          `,
+          INSERT INTO ${tableName}
+          (${escapedColumns})
+          VALUES (${placeholders})
+        `,
           values,
         );
       }
@@ -2468,6 +3019,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
             `Unexpected column "${key}" in snapshot table "${entity.name}".`,
           );
         }
+
         const destinationName = mappingsBySource.get(key);
         if (destinationName === null || destinationName === undefined) {
           continue;
@@ -2484,6 +3036,119 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         row[column.databaseName] = decodeRawValue(value);
       }
 
+      for (const valueMapping of mapping.columnValues || []) {
+        if (!hasColumnValueStrategy(valueMapping)) {
+          continue;
+        }
+
+        const column = columnsByDatabaseName.get(
+          valueMapping.destinationColumn,
+        );
+
+        if (!column) {
+          throw new Error(
+            `Unknown database column "${valueMapping.destinationColumn}" in destination table "${metadata.tableName}".`,
+          );
+        }
+
+        switch (valueMapping.strategy) {
+          case 'set-null':
+            row[column.databaseName] = null;
+            break;
+          case 'database-default':
+            break;
+          case 'constant':
+            if (valueMapping.value === undefined) {
+              throw new Error(
+                `No constant value is configured for "${metadata.tableName}.${column.databaseName}".`,
+              );
+            }
+
+            row[column.databaseName] =
+              sqlTypeFamily(String(column.type)) === 'string'
+                ? String(valueMapping.value)
+                : sqlTypeFamily(String(column.type)) === 'date'
+                  ? new Date(String(valueMapping.value))
+                  : valueMapping.value;
+            break;
+          case 'sequential': {
+            if (
+              typeof valueMapping.start !== 'number' ||
+              typeof valueMapping.step !== 'number'
+            ) {
+              throw new Error(
+                `Sequential values are not configured for "${metadata.tableName}.${column.databaseName}".`,
+              );
+            }
+
+            const index = sequenceIndexes.get(column.databaseName) || 0;
+            const generated = valueMapping.start + index * valueMapping.step;
+            if (!Number.isFinite(generated)) {
+              throw new Error(
+                `Sequential value overflow for "${metadata.tableName}.${column.databaseName}".`,
+              );
+            }
+
+            row[column.databaseName] =
+              sqlTypeFamily(String(column.type)) === 'string'
+                ? String(generated)
+                : generated;
+            sequenceIndexes.set(column.databaseName, index + 1);
+            break;
+          }
+          case 'random': {
+            if (
+              typeof valueMapping.min !== 'number' ||
+              typeof valueMapping.max !== 'number'
+            ) {
+              throw new Error(
+                `Random number range is not configured for "${metadata.tableName}.${column.databaseName}".`,
+              );
+            }
+
+            const generated = this.randomInteger(
+              valueMapping.min,
+              valueMapping.max,
+            );
+
+            row[column.databaseName] =
+              sqlTypeFamily(String(column.type)) === 'string'
+                ? String(generated)
+                : generated;
+            break;
+          }
+          case 'uuid':
+            row[column.databaseName] = this.generateUuidV4();
+            break;
+          case 'hash':
+            row[column.databaseName] = await this.generateColumnHash(
+              valueMapping,
+              parsed as Record<string, unknown>,
+            );
+            break;
+          case 'current-timestamp':
+            row[column.databaseName] = new Date();
+            break;
+          case 'copy':
+            if (
+              !valueMapping.sourceColumn ||
+              !Object.prototype.hasOwnProperty.call(
+                parsed,
+                valueMapping.sourceColumn,
+              )
+            ) {
+              throw new Error(
+                `Source value "${valueMapping.sourceColumn || ''}" is missing for "${metadata.tableName}.${column.databaseName}".`,
+              );
+            }
+
+            row[column.databaseName] = decodeRawValue(
+              parsed[valueMapping.sourceColumn],
+            );
+            break;
+        }
+      }
+
       batch.push(row);
 
       if (batch.length >= ROW_BATCH_SIZE) {
@@ -2495,6 +3160,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     if (batch.length) {
       await insertBatch(batch);
     }
+    //#endregion
   }
   //#endregion
 
@@ -2505,6 +3171,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     objectKey: string,
     file: TaonSudoRawMigrationFile,
   ): Promise<void> {
+    //#region @websqlFunc
     //#region @backendFunc
     const source = await this.openObject(context, objectKey);
     //#region @cjsRemove
@@ -2564,6 +3231,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
 
     return void 0 as any;
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -2574,6 +3242,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     backupPrefix: string,
     clearAllData: boolean,
   ): Promise<void> {
+    //#region @websqlFunc
     for (const backup of backups) {
       const controller = this.getStorageController(
         context,
@@ -2608,6 +3277,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         );
       }
     }
+    //#endregion
   }
   //#endregion
 
@@ -2617,6 +3287,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     stageId: string,
     snapshotId: string,
   ): Promise<void> {
+    //#region @websqlFunc
     const stagePrefix = this.snapshotPrefix(context, stageId);
     const finalPrefix = this.snapshotPrefix(context, snapshotId);
     if (!this.isR2Runtime()) {
@@ -2662,6 +3333,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
       throw error;
     }
+    //#endregion
   }
   //#endregion
 
@@ -2670,6 +3342,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     snapshotId: string,
   ): Promise<TaonSudoRawMigrationManifest | undefined> {
+    //#region @websqlFunc
     this.assertSnapshotId(snapshotId);
     const manifestKey =
       this.snapshotPrefix(context, snapshotId) + 'manifest.json';
@@ -2692,6 +3365,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
       throw error;
     }
+    //#endregion
   }
   //#endregion
 
@@ -2700,6 +3374,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     content: string,
     manifestKey: string,
   ): TaonSudoRawMigrationManifest {
+    //#region @websqlFunc
     let parsed: unknown;
     try {
       parsed = JSON.parse(content);
@@ -2722,6 +3397,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       };
     }
     return parsed;
+    //#endregion
   }
   //#endregion
 
@@ -2730,6 +3406,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     manifest: TaonSudoRawMigrationManifest,
     expectedContextName?: string,
   ): void {
+    //#region @websqlFunc
     if (
       manifest.format !== SNAPSHOT_FORMAT ||
       manifest.version !== 2 ||
@@ -2875,11 +3552,13 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     if (manifest.totalFiles !== expectedFileCount) {
       throw new Error('Snapshot manifest has invalid file totals.');
     }
+    //#endregion
   }
   //#endregion
 
   //#region methods / is manifest
   private isManifest(value: unknown): value is TaonSudoRawMigrationManifest {
+    //#region @websqlFunc
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return false;
     }
@@ -2902,6 +3581,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       Array.isArray(manifest.sqlEntities) &&
       Array.isArray(manifest.bucketControllers)
     );
+    //#endregion
   }
   //#endregion
 
@@ -2911,6 +3591,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     key: string,
     producer: (write: (chunk: Uint8Array) => Promise<void>) => Promise<void>,
   ): Promise<void> {
+    //#region @websqlFunc
     //#region @backendFunc
 
     //#region @cjsRemove
@@ -2972,6 +3653,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     //#endregion
 
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -2980,6 +3662,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     key: string,
   ): Promise<ReadableStream<Uint8Array>> {
+    //#region @websqlFunc
     //#region @backendFunc
     if (this.isR2Runtime()) {
       const object = await this.getR2Bucket(context).get(key);
@@ -2995,6 +3678,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     //#endregion
     return void 0 as any;
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -3003,6 +3687,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     key: string,
   ): Promise<void> {
+    //#region @websqlFunc
     if (this.isR2Runtime()) {
       const object = await this.getR2Bucket(context).head(key);
       if (!object) {
@@ -3014,6 +3699,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     if (!stat.isFile()) {
       throw new Error(`Required snapshot object is missing: "${key}".`);
     }
+    //#endregion
   }
   //#endregion
 
@@ -3022,6 +3708,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     prefix: string,
   ): Promise<void> {
+    //#region @websqlFunc
     if (this.isR2Runtime()) {
       const bucket = this.getR2Bucket(context);
       const keys = await this.listR2Keys(bucket, prefix);
@@ -3032,6 +3719,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     }
     const pathToRemove = this.localObjectPath(context, prefix);
     await fse.remove(pathToRemove);
+    //#endregion
   }
   //#endregion
 
@@ -3040,6 +3728,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     bucket: R2Bucket,
     prefix: string,
   ): Promise<string[]> {
+    //#region @websqlFunc
     const keys: string[] = [];
     let cursor: string | undefined;
     do {
@@ -3048,6 +3737,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       cursor = result.truncated ? result.cursor : undefined;
     } while (cursor);
     return keys;
+    //#endregion
   }
   //#endregion
 
@@ -3057,6 +3747,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     storageKey: string,
     processLine: (line: string) => Promise<void>,
   ): Promise<void> {
+    //#region @websqlFunc
     const stream = await this.openObject(context, storageKey);
     const decoder = new TextDecoder();
     const reader = stream.getReader();
@@ -3081,6 +3772,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     } finally {
       reader.releaseLock();
     }
+    //#endregion
   }
   //#endregion
 
@@ -3090,6 +3782,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     controllerName: string,
     key: string,
   ): Promise<ReadableStream<Uint8Array>> {
+    //#region @websqlFunc
     //#region @backendFunc
     if (this.isR2Runtime()) {
       const object = await this.getR2Bucket(context).get(
@@ -3111,6 +3804,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     //#endregion
     return void 0 as any;
     //#endregion
+    //#endregion
   }
   //#endregion
 
@@ -3118,6 +3812,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   private async listBucketFiles(
     controller: TaonBaseStorageController,
   ): Promise<TaonStorageObject[]> {
+    //#region @websqlFunc
     const files = await controller.list({})();
     if (!Array.isArray(files)) {
       throw new Error(
@@ -3151,6 +3846,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       keys.add(file.key);
     }
     return files as TaonStorageObject[];
+    //#endregion
   }
   //#endregion
 
@@ -3158,6 +3854,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   getIncludedBucketControllers(
     context: EndpointContext,
   ): { name: string; classFn: Function }[] {
+    //#region @websqlFunc
     return context
       .getClassFunByArr(Models.ClassType.CONTROLLER)
       .map(classFn => ({
@@ -3170,6 +3867,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
             item.classFn.prototype instanceof TaonBaseStorageController) &&
           TaonSudoUtils.isRawMigrationBucketControllerIncluded(item.name),
       );
+    //#endregion
   }
   //#endregion
 
@@ -3178,6 +3876,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     controllerName: string,
   ): TaonBaseStorageController {
+    //#region @websqlFunc
     const controllerClass = this.getIncludedBucketControllers(context).find(
       item => item.name === controllerName,
     );
@@ -3191,6 +3890,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       throw new Error(`Storage controller "${controllerName}" is unavailable.`);
     }
     return controller;
+    //#endregion
   }
   //#endregion
 
@@ -3204,6 +3904,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       >['entityMetadatas'][number];
     }[],
   ): typeof entities {
+    //#region @websqlFunc
     const entitiesByTable = new Map(
       entities.map(entity => [entity.destination.tableName, entity]),
     );
@@ -3225,6 +3926,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       ordered.push(entitiesByTable.get(next)!);
     }
     return ordered;
+    //#endregion
   }
   //#endregion
 
@@ -3232,6 +3934,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   currentSchemaEntities(
     context: EndpointContext,
   ): TaonSudoRawMigrationSchemaEntity[] {
+    //#region @websqlFunc
     return context
       .connection!.entityMetadatas.filter(metadata =>
         TaonSudoUtils.isRawMigrationSqlEntityIncluded(
@@ -3260,6 +3963,26 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           ),
         })),
       }));
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / unique column groups
+  private uniqueColumnGroups(
+    metadata: NonNullable<
+      EndpointContext['connection']
+    >['entityMetadatas'][number],
+  ): string[][] {
+    //#region @websqlFunc
+    return [
+      ...metadata.uniques.map(unique =>
+        unique.columns.map(column => column.databaseName),
+      ),
+      ...metadata.indices
+        .filter(index => index.isUnique && !index.where)
+        .map(index => index.columns.map(column => column.databaseName)),
+    ];
+    //#endregion
   }
   //#endregion
 
@@ -3269,6 +3992,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       EndpointContext['connection']
     >['entityMetadatas'][number]['columns'][number],
   ): TaonSudoRawMigrationColumn {
+    //#region @websqlFunc
     const type =
       typeof column.type === 'string'
         ? column.type
@@ -3286,8 +4010,12 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       primary: column.isPrimary,
       nullable: column.isNullable,
       generated: column.isGenerated,
+      unique: this.uniqueColumnGroups(column.entityMetadata).some(
+        columns => columns.length === 1 && columns[0] === column.databaseName,
+      ),
       default: defaultValue,
     };
+    //#endregion
   }
   //#endregion
 
@@ -3296,10 +4024,11 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     source: TaonSudoRawMigrationColumn,
     destination: TaonSudoRawMigrationColumn,
   ): boolean {
+    //#region @websqlFunc
     if (!source.type || !destination.type) {
       return true;
     }
-    const normalize = (type: string) =>
+    const normalize = (type: string): string =>
       type.toLowerCase().replace(/\s+/g, '').replace(/\(.*/, '');
     const sourceType = normalize(source.type);
     const destinationType = normalize(destination.type);
@@ -3317,6 +4046,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     return families.some(
       family => family.includes(sourceType) && family.includes(destinationType),
     );
+    //#endregion
   }
   //#endregion
 
@@ -3325,14 +4055,23 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     entities: TaonSudoRawMigrationSchemaEntity[];
     buckets: string[];
   }): Promise<string> {
+    //#region @websqlFunc
     const normalized = JSON.stringify({
       entities: [...schema.entities]
         .sort((a, b) => a.tableName.localeCompare(b.tableName))
         .map(entity => ({
           ...entity,
-          columns: [...entity.columns].sort((a, b) =>
-            a.databaseName.localeCompare(b.databaseName),
-          ),
+          columns: [...entity.columns]
+            .map(column => ({
+              databaseName: column.databaseName,
+              propertyPath: column.propertyPath,
+              type: column.type,
+              primary: column.primary,
+              nullable: column.nullable,
+              generated: column.generated,
+              default: column.default,
+            }))
+            .sort((a, b) => a.databaseName.localeCompare(b.databaseName)),
           foreignKeys: [...entity.foreignKeys].sort((a, b) =>
             `${a.columns.join(',')}:${a.referencedTableName}`.localeCompare(
               `${b.columns.join(',')}:${b.referencedTableName}`,
@@ -3348,6 +4087,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     return Array.from(new Uint8Array(digest), byte =>
       byte.toString(16).padStart(2, '0'),
     ).join('');
+    //#endregion
   }
   //#endregion
 
@@ -3356,6 +4096,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     storageKey: string,
   ): Promise<string[]> {
+    //#region @websqlFunc
     const stream = await this.openObject(context, storageKey);
     const reader = stream.getReader();
     const decoder = new TextDecoder();
@@ -3385,16 +4126,19 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       await reader.cancel();
       reader.releaseLock();
     }
+    //#endregion
   }
   //#endregion
 
   //#region methods / require sql connection
   requireSqlConnection(context: EndpointContext): void {
+    //#region @websqlFunc
     if (!context.connection) {
       throw new Error(
         `Context "${context.contextName}" does not have an initialized SQL connection.`,
       );
     }
+    //#endregion
   }
   //#endregion
 
@@ -3402,6 +4146,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   private snapshotMetadataRepository(
     context: EndpointContext,
   ): Repository<TaonSudoSnapshotEntity> {
+    //#region @websqlFunc
     this.requireSqlConnection(context);
     const entityClass = context.getClassFunByClassName(
       'TaonSudoSnapshotEntity',
@@ -3414,6 +4159,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     return context.connection!.getRepository(
       entityClass as any,
     ) as Repository<TaonSudoSnapshotEntity>;
+    //#endregion
   }
   //#endregion
 
@@ -3430,7 +4176,9 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       | 'totalFiles'
     >,
   ): Promise<void> {
+    //#region @websqlFunc
     await this.snapshotMetadataRepository(context).save(metadata);
+    //#endregion
   }
   //#endregion
 
@@ -3439,6 +4187,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     snapshotId: string,
   ): Promise<void> {
+    //#region @websqlFunc
     const repository = this.snapshotMetadataRepository(context);
     const records = await repository.find({
       where: { contextName: context.contextName, snapshotId },
@@ -3446,11 +4195,13 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     if (records.length) {
       await repository.remove(records);
     }
+    //#endregion
   }
   //#endregion
 
   //#region methods / validate snapshot name
   private validateSnapshotName(name: string): string {
+    //#region @websqlFunc
     const normalized = typeof name === 'string' ? name.trim() : '';
     if (!this.isValidSnapshotName(normalized)) {
       throw new Error(
@@ -3458,45 +4209,56 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       );
     }
     return normalized;
+    //#endregion
   }
   //#endregion
 
   //#region methods / is valid snapshot name
   private isValidSnapshotName(name: unknown): name is string {
+    //#region @websqlFunc
     return (
       typeof name === 'string' &&
       name.trim().length > 0 &&
       name.trim().length <= 120
     );
+    //#endregion
   }
   //#endregion
 
   //#region methods / context prefix
   private contextPrefix(context: EndpointContext): string {
+    //#region @websqlFunc
     return `${RAW_MIGRATION_ROOT}/${encodeURIComponent(context.contextName)}/`;
+    //#endregion
   }
   //#endregion
 
   //#region methods / snapshot prefix
   snapshotPrefix(context: EndpointContext, id: string): string {
+    //#region @websqlFunc
     return `${this.contextPrefix(context)}${id}/`;
+    //#endregion
   }
   //#endregion
 
   //#region methods / local context directory
   private localContextDirectory(context: EndpointContext): string {
+    //#region @websqlFunc
     return path.join(
       context.bucketFileDbLocationBase,
       RAW_MIGRATION_ROOT,
       encodeURIComponent(context.contextName),
     );
+    //#endregion
   }
   //#endregion
 
   //#region methods / local snapshot directory
   private localSnapshotDirectory(context: EndpointContext, id: string): string {
+    //#region @websqlFunc
     this.assertSnapshotId(id, true);
     return path.join(this.localContextDirectory(context), id);
+    //#endregion
   }
   //#endregion
 
@@ -3506,6 +4268,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     id: string,
     relativePath: string,
   ): string {
+    //#region @websqlFunc
     if (!this.isRelativeSnapshotFile(relativePath)) {
       throw new Error('Invalid raw migration object path.');
     }
@@ -3513,17 +4276,20 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       this.localSnapshotDirectory(context, id),
       ...relativePath.split('/'),
     );
+    //#endregion
   }
   //#endregion
 
   //#region methods / local object path
   private localObjectPath(context: EndpointContext, key: string): string {
+    //#region @websqlFunc
     const root = path.resolve(context.bucketFileDbLocationBase);
     const fullPath = path.resolve(root, ...key.split('/'));
     if (fullPath !== root && !fullPath.startsWith(`${root}${path.sep}`)) {
       throw new Error('Invalid raw migration object path.');
     }
     return fullPath;
+    //#endregion
   }
   //#endregion
 
@@ -3533,6 +4299,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     controllerName: string,
     key: string,
   ): string {
+    //#region @websqlFunc
     this.assertSafeStorageKey(key);
     const root = path.resolve(context.bucketFileDbLocationBase, controllerName);
     const fullPath = path.resolve(root, ...key.split('/'));
@@ -3540,18 +4307,22 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       throw new Error('Invalid bucket object path.');
     }
     return fullPath;
+    //#endregion
   }
   //#endregion
 
   //#region methods / bucket object key
   private bucketObjectKey(controllerName: string, key: string): string {
+    //#region @websqlFunc
     this.assertSafeStorageKey(key);
     return `${controllerName}/${key}`;
+    //#endregion
   }
   //#endregion
 
   //#region methods / assert safe storage key
   private assertSafeStorageKey(key: string): void {
+    //#region @websqlFunc
     if (
       !key ||
       key.startsWith('/') ||
@@ -3560,11 +4331,13 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     ) {
       throw new Error(`Invalid bucket object key "${key}".`);
     }
+    //#endregion
   }
   //#endregion
 
   //#region methods / is relative snapshot file
   private isRelativeSnapshotFile(file: string): boolean {
+    //#region @websqlFunc
     return (
       !!file &&
       !file.startsWith('/') &&
@@ -3573,34 +4346,42 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       !file.includes(':') &&
       file.split('/').every(part => !!part && part !== '.' && part !== '..')
     );
+    //#endregion
   }
   //#endregion
 
   //#region methods / is snapshot id
   private isSnapshotId(id: string): boolean {
+    //#region @websqlFunc
     return /^[0-9a-f-]{36}$/.test(id);
+    //#endregion
   }
   //#endregion
 
   //#region methods / assert snapshot id
   assertSnapshotId(id: string, allowStaging = false): void {
+    //#region @websqlFunc
     if (
       !this.isSnapshotId(id) &&
       !(allowStaging && /^staging-[0-9a-f-]{36}$/.test(id))
     ) {
       throw new Error('Invalid raw migration snapshot identifier.');
     }
+    //#endregion
   }
   //#endregion
 
   //#region methods / is r2 runtime
   private isR2Runtime(): boolean {
+    //#region @websqlFunc
     return UtilsOs.isRunningInCloudflareWorker();
+    //#endregion
   }
   //#endregion
 
   //#region methods / get r2 bucket
   private getR2Bucket(context: EndpointContext): R2Bucket {
+    //#region @websqlFunc
     const bucket = context.R2;
     if (!bucket) {
       throw new Error(
@@ -3608,6 +4389,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       );
     }
     return bucket;
+    //#endregion
   }
   //#endregion
 }

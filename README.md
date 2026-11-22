@@ -1,18 +1,18 @@
 # Sudo
 
-![Sudo overview in Taon Admin](docs/sudo.png)
+![Sudo overview in Taon Admin](./docs/sudo.png)
 
 Sudo gives you access to Taon Admin’s tools for managing application data, restoring snapshots, and troubleshooting HTTP errors. To use these tools, Sudo must be enabled for your account’s email address.
 
 ## Data
 
-![Sudo Data tab](docs/sudo-data.png)
+![Sudo Data tab](./docs/sudo-data.png)
 
 The Data tab works like phpMyAdmin. You can browse SQL tables and edit or delete records directly from Taon Admin.
 
 ## Raw Migrations
 
-![Sudo Raw Migrations tab](docs/sudo-raw-migrations.png)
+![Sudo Raw Migrations tab](./docs/sudo-raw-migrations.png)
 
 Use the Raw Migrations tab to create, export, import, and restore snapshots of your application data. You can use snapshots to back up data or move it between environments.
 
@@ -36,7 +36,7 @@ The App State tab is designed to control when users can interact with your appli
 
 ## HTTP Errors
 
-![Sudo HTTP Errors tab](docs/sudo-http-errors.png)
+![Sudo HTTP Errors tab](./docs/sudo-http-errors.png)
 
 Use the HTTP Errors tab to mute HTTP errors, which can be useful when testing your application locally.
 

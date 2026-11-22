@@ -24,19 +24,499 @@ import {
   TaonUploadedFile,
   TaonStorageObject,
 } from 'taon/src';
-import type { Repository } from 'taon-typeorm/src';
+import type { QueryRunner, Repository } from 'taon-typeorm/src';
 import { fse, GlobalStorage, path, UtilsOs } from 'tnp-core/src';
 
 import {
   TaonSudoRawMigrationBucketController,
+  TaonSudoRawMigrationColumn,
+  TaonSudoRawMigrationCompatibilityReport,
   TaonSudoRawMigrationEntity,
+  TaonSudoRawMigrationEntityMapping,
   TaonSudoRawMigrationFile,
   TaonSudoRawMigrationJobUpdate,
   TaonSudoRawMigrationManifest,
+  TaonSudoRawMigrationPlanIssue,
+  TaonSudoRawMigrationPlanValidation,
+  TaonSudoRawMigrationRestorePlan,
+  TaonSudoRawMigrationSchemaEntity,
   TaonSudoRawMigrationSummary,
 } from './taon-sudo-raw-migration.models';
 import { TaonSudoSnapshotEntity } from './taon-sudo-snapshot.entity';
 import { TaonSudoUtils } from './taon-sudo.utils';
+//#endregion
+
+//#region analyze restore backend
+async function analyzeRestoreBackend(
+  this: TaonSudoRawMigrationRepository,
+  context: EndpointContext,
+  snapshotId: string,
+  clearAllData: boolean,
+): Promise<TaonSudoRawMigrationCompatibilityReport> {
+  this.requireSqlConnection(context);
+  this.assertSnapshotId(snapshotId);
+  const manifest = await this.readManifest(context, snapshotId);
+  if (!manifest) {
+    throw new Error(`Raw migration snapshot "${snapshotId}" was not found.`);
+  }
+  this.assertManifest(manifest, context.contextName);
+
+  const currentEntities = this.currentSchemaEntities(context);
+  const snapshotEntities: TaonSudoRawMigrationSchemaEntity[] = [];
+  for (const entity of manifest.sqlEntities) {
+    const current = currentEntities.find(
+      item => item.tableName === entity.tableName,
+    );
+    const rowColumns = await this.readFirstRowColumns(
+      context,
+      this.snapshotPrefix(context, snapshotId) + entity.file,
+    );
+    const legacyColumnByPropertyPath = new Map(
+      (current?.columns || [])
+        .filter(column => column.propertyPath)
+        .map(column => [column.propertyPath!, column.databaseName]),
+    );
+    const storedColumns = rowColumns.length ? rowColumns : entity.columns;
+    const metadataByName = new Map<string, TaonSudoRawMigrationColumn>();
+    for (const column of entity.columnMetadata || []) {
+      metadataByName.set(column.databaseName, column);
+      if (column.propertyPath) {
+        metadataByName.set(column.propertyPath, column);
+      }
+    }
+    snapshotEntities.push({
+      name: entity.name,
+      tableName: entity.tableName,
+      columns: storedColumns.map(storedName => {
+        const metadata = metadataByName.get(storedName);
+        const databaseName =
+          metadata?.databaseName ||
+          legacyColumnByPropertyPath.get(storedName) ||
+          storedName;
+        return {
+          ...(metadata || {}),
+          databaseName,
+          propertyPath: metadata?.propertyPath || storedName,
+        };
+      }),
+      foreignKeys: entity.foreignKeys || [],
+    });
+  }
+
+  const entities = snapshotEntities.map(snapshot => {
+    const current = currentEntities.find(
+      item => item.tableName === snapshot.tableName,
+    );
+    const columns = snapshot.columns.map(snapshotColumn => {
+      const destination = current?.columns.find(
+        column =>
+          column.databaseName === snapshotColumn.databaseName ||
+          (!!snapshotColumn.propertyPath &&
+            column.propertyPath === snapshotColumn.propertyPath),
+      );
+      const compatible =
+        !!destination &&
+        this.areColumnTypesCompatible(snapshotColumn, destination);
+      return {
+        snapshot: snapshotColumn,
+        current: destination,
+        status: !destination
+          ? ('missing' as const)
+          : compatible
+            ? ('compatible' as const)
+            : ('incompatible' as const),
+        reason:
+          destination && !compatible
+            ? `Column types differ (${snapshotColumn.type || 'unknown'} -> ${destination.type || 'unknown'}).`
+            : undefined,
+      };
+    });
+    return {
+      snapshot,
+      current,
+      status: !current
+        ? ('missing' as const)
+        : columns.every(column => column.status === 'compatible') &&
+            current.columns.every(column =>
+              snapshot.columns.some(
+                snapshotColumn =>
+                  snapshotColumn.databaseName === column.databaseName,
+              ),
+            )
+          ? ('compatible' as const)
+          : ('columns-differ' as const),
+      columns,
+    };
+  });
+  const snapshotBucketControllers = manifest.bucketControllers.map(
+    item => item.name,
+  );
+  const currentBucketControllers = this.getIncludedBucketControllers(
+    context,
+  ).map(item => item.name);
+  const snapshotSchemaFingerprint = await this.schemaFingerprint({
+    entities: snapshotEntities,
+    buckets: snapshotBucketControllers,
+  });
+  const currentSchemaFingerprint = await this.schemaFingerprint({
+    entities: currentEntities,
+    buckets: currentBucketControllers,
+  });
+  const suggestedPlan: TaonSudoRawMigrationRestorePlan = {
+    format: 'taon-sudo-raw-migration-restore-plan',
+    version: 1,
+    snapshotId,
+    snapshotSchemaFingerprint,
+    currentSchemaFingerprint,
+    clearAllData,
+    entities: entities.map(compatibility => ({
+      sourceTableName: compatibility.snapshot.tableName,
+      destinationTableName:
+        compatibility.status === 'missing'
+          ? null
+          : compatibility.current!.tableName,
+      selected: compatibility.status !== 'missing',
+      columns: compatibility.snapshot.columns.map(column => ({
+        sourceColumn: column.databaseName,
+        destinationColumn:
+          compatibility.current?.columns.find(
+            destination =>
+              destination.databaseName === column.databaseName ||
+              (!!column.propertyPath &&
+                destination.propertyPath === column.propertyPath),
+          )?.databaseName || null,
+      })),
+    })),
+    bucketControllers: snapshotBucketControllers.filter(name =>
+      currentBucketControllers.includes(name),
+    ),
+  };
+  const missingBucketControllers = snapshotBucketControllers.filter(
+    name => !currentBucketControllers.includes(name),
+  );
+  const newBucketControllers = currentBucketControllers.filter(
+    name => !snapshotBucketControllers.includes(name),
+  );
+  return {
+    snapshotId,
+    snapshotSchemaFingerprint,
+    currentSchemaFingerprint,
+    snapshotEntities,
+    currentEntities,
+    entities,
+    newEntities: currentEntities.filter(
+      current =>
+        !snapshotEntities.some(
+          snapshot => snapshot.tableName === current.tableName,
+        ),
+    ),
+    snapshotBucketControllers,
+    currentBucketControllers,
+    missingBucketControllers,
+    newBucketControllers,
+    schemasCompatible:
+      entities.every(entity => entity.status === 'compatible') &&
+      missingBucketControllers.length === 0 &&
+      newBucketControllers.length === 0,
+    suggestedPlan,
+  };
+}
+//#endregion
+
+function isRestorePlanShape(
+  value: unknown,
+): value is TaonSudoRawMigrationRestorePlan {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const plan = value as Partial<TaonSudoRawMigrationRestorePlan>;
+  return (
+    plan.format === 'taon-sudo-raw-migration-restore-plan' &&
+    plan.version === 1 &&
+    typeof plan.snapshotId === 'string' &&
+    typeof plan.snapshotSchemaFingerprint === 'string' &&
+    typeof plan.currentSchemaFingerprint === 'string' &&
+    typeof plan.clearAllData === 'boolean' &&
+    Array.isArray(plan.entities) &&
+    plan.entities.every(
+      mapping =>
+        !!mapping &&
+        typeof mapping.sourceTableName === 'string' &&
+        (mapping.destinationTableName === null ||
+          typeof mapping.destinationTableName === 'string') &&
+        typeof mapping.selected === 'boolean' &&
+        Array.isArray(mapping.columns) &&
+        mapping.columns.every(
+          column =>
+            !!column &&
+            typeof column.sourceColumn === 'string' &&
+            (column.destinationColumn === null ||
+              typeof column.destinationColumn === 'string'),
+        ),
+    ) &&
+    Array.isArray(plan.bucketControllers) &&
+    plan.bucketControllers.every(name => typeof name === 'string')
+  );
+}
+
+//#region validate plan
+function validatePlan(
+  this: TaonSudoRawMigrationRepository,
+  report: TaonSudoRawMigrationCompatibilityReport,
+  plan: TaonSudoRawMigrationRestorePlan,
+): TaonSudoRawMigrationPlanValidation {
+  const errors: TaonSudoRawMigrationPlanIssue[] = [];
+  const warnings: TaonSudoRawMigrationPlanIssue[] = [];
+  const error = (
+    code: TaonSudoRawMigrationPlanIssue['code'],
+    message: string,
+    details: Partial<TaonSudoRawMigrationPlanIssue> = {},
+  ) => errors.push({ code, message, ...details });
+
+  if (!isRestorePlanShape(plan)) {
+    error('INVALID_FORMAT', 'The restore plan format is invalid.');
+    return {
+      valid: false,
+      errors,
+      warnings,
+      selectedEntityCount: 0,
+      selectedBucketControllerCount: 0,
+    };
+  }
+  if (
+    plan.snapshotId !== report.snapshotId ||
+    plan.snapshotSchemaFingerprint !== report.snapshotSchemaFingerprint
+  ) {
+    error(
+      'SNAPSHOT_CHANGED',
+      'The snapshot schema no longer matches this restore plan.',
+    );
+  }
+  if (plan.currentSchemaFingerprint !== report.currentSchemaFingerprint) {
+    error(
+      'CURRENT_SCHEMA_CHANGED',
+      'The current database schema changed after the restore plan was created.',
+    );
+  }
+
+  const selected = plan.entities.filter(mapping => mapping.selected);
+  const selectedDestinationTables = new Set(
+    selected.flatMap(mapping =>
+      typeof mapping.destinationTableName === 'string'
+        ? [mapping.destinationTableName]
+        : [],
+    ),
+  );
+  const destinationTables = new Set<string>();
+  const sourceTables = new Set<string>();
+  for (const mapping of plan.entities) {
+    const source = report.snapshotEntities.find(
+      entity => entity.tableName === mapping.sourceTableName,
+    );
+    if (!source) {
+      error(
+        'UNKNOWN_SOURCE_ENTITY',
+        `Snapshot table "${mapping.sourceTableName}" does not exist.`,
+        { sourceTableName: mapping.sourceTableName },
+      );
+      continue;
+    }
+    if (sourceTables.has(source.tableName)) {
+      error(
+        'INVALID_FORMAT',
+        `Snapshot table "${source.tableName}" is mapped more than once.`,
+        { sourceTableName: source.tableName },
+      );
+      continue;
+    }
+    sourceTables.add(source.tableName);
+    if (!mapping.selected) {
+      continue;
+    }
+    const destination = report.currentEntities.find(
+      entity => entity.tableName === mapping.destinationTableName,
+    );
+    if (!destination) {
+      error(
+        'UNKNOWN_DESTINATION_ENTITY',
+        `Destination table "${mapping.destinationTableName || ''}" does not exist.`,
+        { sourceTableName: mapping.sourceTableName },
+      );
+      continue;
+    }
+    if (destinationTables.has(destination.tableName)) {
+      error(
+        'DUPLICATE_DESTINATION_ENTITY',
+        `Multiple snapshot tables map to "${destination.tableName}".`,
+        { destinationTableName: destination.tableName },
+      );
+    }
+    destinationTables.add(destination.tableName);
+    const mappedDestinations = new Set<string>();
+    const mappedSources = new Set<string>();
+    for (const columnMapping of mapping.columns) {
+      const sourceColumn = source.columns.find(
+        column => column.databaseName === columnMapping.sourceColumn,
+      );
+      if (!sourceColumn) {
+        error(
+          'UNKNOWN_SOURCE_COLUMN',
+          `Snapshot column "${columnMapping.sourceColumn}" does not exist.`,
+          {
+            sourceTableName: source.tableName,
+            sourceColumn: columnMapping.sourceColumn,
+          },
+        );
+        continue;
+      }
+      if (mappedSources.has(sourceColumn.databaseName)) {
+        error(
+          'INVALID_FORMAT',
+          `Snapshot column "${source.tableName}.${sourceColumn.databaseName}" is mapped more than once.`,
+          {
+            sourceTableName: source.tableName,
+            sourceColumn: sourceColumn.databaseName,
+          },
+        );
+        continue;
+      }
+      mappedSources.add(sourceColumn.databaseName);
+      if (columnMapping.destinationColumn === null) {
+        continue;
+      }
+      const destinationColumn = destination.columns.find(
+        column => column.databaseName === columnMapping.destinationColumn,
+      );
+      if (!destinationColumn) {
+        error(
+          'UNKNOWN_DESTINATION_COLUMN',
+          `Destination column "${columnMapping.destinationColumn}" does not exist.`,
+          {
+            destinationTableName: destination.tableName,
+            destinationColumn: columnMapping.destinationColumn,
+          },
+        );
+        continue;
+      }
+      if (mappedDestinations.has(destinationColumn.databaseName)) {
+        error(
+          'DUPLICATE_DESTINATION_COLUMN',
+          `Multiple columns map to "${destination.tableName}.${destinationColumn.databaseName}".`,
+          {
+            destinationTableName: destination.tableName,
+            destinationColumn: destinationColumn.databaseName,
+          },
+        );
+      }
+      mappedDestinations.add(destinationColumn.databaseName);
+      if (!this.areColumnTypesCompatible(sourceColumn, destinationColumn)) {
+        error(
+          'INCOMPATIBLE_COLUMN_TYPE',
+          `Column "${source.tableName}.${sourceColumn.databaseName}" is not compatible with "${destination.tableName}.${destinationColumn.databaseName}".`,
+          {
+            sourceTableName: source.tableName,
+            sourceColumn: sourceColumn.databaseName,
+            destinationTableName: destination.tableName,
+            destinationColumn: destinationColumn.databaseName,
+          },
+        );
+      }
+    }
+    for (const sourceColumn of source.columns) {
+      if (!mappedSources.has(sourceColumn.databaseName)) {
+        error(
+          'UNKNOWN_SOURCE_COLUMN',
+          `Snapshot column "${source.tableName}.${sourceColumn.databaseName}" has no mapping decision.`,
+          {
+            sourceTableName: source.tableName,
+            sourceColumn: sourceColumn.databaseName,
+          },
+        );
+      }
+    }
+    if (mappedDestinations.size === 0) {
+      error(
+        'INVALID_FORMAT',
+        `Selected snapshot table "${source.tableName}" must map at least one destination column.`,
+        { sourceTableName: source.tableName },
+      );
+    }
+    for (const column of destination.columns) {
+      if (
+        !mappedDestinations.has(column.databaseName) &&
+        !column.nullable &&
+        !column.generated &&
+        column.default === undefined
+      ) {
+        error(
+          'MISSING_REQUIRED_COLUMN',
+          `Required destination column "${destination.tableName}.${column.databaseName}" has no mapping or database default.`,
+          {
+            destinationTableName: destination.tableName,
+            destinationColumn: column.databaseName,
+          },
+        );
+      }
+    }
+    if (
+      !plan.clearAllData &&
+      destination.columns
+        .filter(column => column.primary)
+        .some(column => !mappedDestinations.has(column.databaseName))
+    ) {
+      error(
+        'MISSING_PRIMARY_KEY',
+        `Overlay restore requires every primary-key column of "${destination.tableName}" to be mapped.`,
+        { destinationTableName: destination.tableName },
+      );
+    }
+    for (const foreignKey of destination.foreignKeys) {
+      if (!selectedDestinationTables.has(foreignKey.referencedTableName)) {
+        warnings.push({
+          code: 'FOREIGN_KEY_DEPENDENCY',
+          message: `"${destination.tableName}" references unselected table "${foreignKey.referencedTableName}"; existing rows must satisfy the constraint.`,
+          destinationTableName: destination.tableName,
+        });
+      }
+    }
+  }
+  for (const source of report.snapshotEntities) {
+    if (!sourceTables.has(source.tableName)) {
+      error(
+        'INVALID_FORMAT',
+        `Snapshot table "${source.tableName}" has no restore or skip decision.`,
+        { sourceTableName: source.tableName },
+      );
+    }
+  }
+
+  const bucketNames = new Set<string>();
+  for (const name of plan.bucketControllers) {
+    if (
+      !report.snapshotBucketControllers.includes(name) ||
+      !report.currentBucketControllers.includes(name)
+    ) {
+      error(
+        'UNKNOWN_BUCKET_CONTROLLER',
+        `Bucket controller "${name}" cannot be restored.`,
+      );
+    }
+    if (bucketNames.has(name)) {
+      error(
+        'UNKNOWN_BUCKET_CONTROLLER',
+        `Bucket controller "${name}" is selected more than once.`,
+      );
+    }
+    bucketNames.add(name);
+  }
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    selectedEntityCount: selected.length,
+    selectedBucketControllerCount: bucketNames.size,
+  };
+}
 //#endregion
 
 declare const FixedLengthStream: {
@@ -148,6 +628,7 @@ interface SnapshotOptions {
 interface RestoreOptions {
   jobId: string;
   clearAllData?: boolean;
+  plan?: TaonSudoRawMigrationRestorePlan;
   onProgress: (update: TaonSudoRawMigrationJobUpdate) => void;
 }
 
@@ -275,6 +756,49 @@ class RawMigrationCancelledError extends Error {
 })
 export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   debugMode = false;
+
+  //#region methods / analyze restore
+  analyzeRestore(
+    context: EndpointContext,
+    snapshotId: string,
+    clearAllData = false,
+  ): Promise<TaonSudoRawMigrationCompatibilityReport> {
+    //#region @backendFunc
+    return analyzeRestoreBackend.call(this, context, snapshotId, clearAllData);
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / validate restore plan
+  async validateRestorePlan(
+    context: EndpointContext,
+    plan: TaonSudoRawMigrationRestorePlan,
+  ): Promise<TaonSudoRawMigrationPlanValidation> {
+    //#region @backendFunc
+    if (!isRestorePlanShape(plan)) {
+      return {
+        valid: false,
+        errors: [
+          {
+            code: 'INVALID_FORMAT',
+            message: 'The restore plan format is invalid.',
+          },
+        ],
+        warnings: [],
+        selectedEntityCount: 0,
+        selectedBucketControllerCount: 0,
+      };
+    }
+    const report = await analyzeRestoreBackend.call(
+      this,
+      context,
+      plan.snapshotId,
+      plan.clearAllData,
+    );
+    return validatePlan.call(this, report, plan);
+    //#endregion
+  }
+  //#endregion
 
   //#region methods / list snapshots
   listSnapshots(
@@ -565,7 +1089,15 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
           sqlEntities.push({
             name: metadata.name,
             tableName: metadata.tableName,
-            columns: columns.map(column => column.propertyPath),
+            columns: columns.map(column => column.databaseName),
+            columnMetadata: columns.map(column => this.columnSchema(column)),
+            foreignKeys: metadata.foreignKeys.map(key => ({
+              columns: key.columns.map(column => column.databaseName),
+              referencedTableName: key.referencedEntityMetadata.tableName,
+              referencedColumns: key.referencedColumns.map(
+                column => column.databaseName,
+              ),
+            })),
             file,
           });
           completed++;
@@ -1536,7 +2068,6 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     snapshotId: string,
     options: RestoreOptions,
   ): Promise<void> {
-    const clearAllData = options.clearAllData === true;
     this.requireSqlConnection(context);
     this.assertSnapshotId(snapshotId);
     const manifest = await this.readManifest(context, snapshotId);
@@ -1544,70 +2075,50 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       throw new Error(`Raw migration snapshot "${snapshotId}" was not found.`);
     }
     this.assertManifest(manifest, context.contextName);
+    const report = await analyzeRestoreBackend.call(
+      this,
+      context,
+      snapshotId,
+      options.clearAllData === true,
+    );
+    if (options.plan !== undefined && !isRestorePlanShape(options.plan)) {
+      throw new Error(
+        'Restore plan validation failed: [INVALID_FORMAT] The restore plan format is invalid.',
+      );
+    }
+    const plan = options.plan || report.suggestedPlan;
+    const validation = validatePlan.call(this, report, plan);
+    if (!validation.valid) {
+      throw new Error(
+        `Restore plan validation failed: ${validation.errors
+          .map(issue => `[${issue.code}] ${issue.message}`)
+          .join(' ')}`,
+      );
+    }
+    const clearAllData = plan.clearAllData;
     const currentEntities = context.connection!.entityMetadatas.filter(item =>
       TaonSudoUtils.isRawMigrationSqlEntityIncluded(item.name, item.tableName),
     );
-    const currentEntityNames = currentEntities
-      .map(item => item.tableName)
-      .sort();
-    const snapshotEntityNames = manifest.sqlEntities
-      .map(item => item.tableName)
-      .sort();
-    if (
-      currentEntityNames.length !== snapshotEntityNames.length ||
-      currentEntityNames.some(
-        (tableName, index) => tableName !== snapshotEntityNames[index],
-      )
-    ) {
-      throw new Error(
-        'The SQL schema differs from the snapshot. Restore was not started.',
-      );
-    }
-    for (const entity of manifest.sqlEntities) {
-      const metadata = currentEntities.find(
-        item => item.tableName === entity.tableName,
-      );
-      if (
-        !metadata ||
-        metadata.tableName !== entity.tableName ||
-        metadata.columns
-          .filter(column => {
-            const hasTaonRepo = !!this.ctx.getClassFunByClassName(
-              metadata.tableName,
-            );
-            if (!hasTaonRepo) {
-              return true;
-            }
-            return !column.isVirtual && !column.isVirtualProperty;
-          })
-          .map(column => column.propertyPath)
-          .sort()
-          .join('\0') !== [...entity.columns].sort().join('\0')
-      ) {
-        throw new Error(
-          `The SQL schema for "${entity.tableName}" differs from the snapshot. Restore was not started.`,
-        );
-      }
-    }
-
-    const bucketControllers = this.getIncludedBucketControllers(context);
-    const currentControllerNames = bucketControllers
-      .map(item => item.name)
-      .sort();
-    const snapshotControllerNames = manifest.bucketControllers
-      .map(item => item.name)
-      .sort();
-    if (
-      currentControllerNames.length !== snapshotControllerNames.length ||
-      currentControllerNames.some(
-        (name, index) => name !== snapshotControllerNames[index],
-      )
-    ) {
-      throw new Error(
-        'The bucket controller set differs from the snapshot. Restore was not started.',
-      );
-    }
-    for (const bucketController of manifest.bucketControllers) {
+    const selectedEntities = plan.entities
+      .filter(mapping => mapping.selected)
+      .map(mapping => ({
+        mapping,
+        source: manifest.sqlEntities.find(
+          entity => entity.tableName === mapping.sourceTableName,
+        )!,
+        destination: currentEntities.find(
+          entity => entity.tableName === mapping.destinationTableName,
+        )!,
+      }));
+    const orderedEntities =
+      this.orderMappedEntitiesForRestore(selectedEntities);
+    const selectedBuckets = manifest.bucketControllers.filter(controller =>
+      plan.bucketControllers.includes(controller.name),
+    );
+    const bucketControllers = this.getIncludedBucketControllers(context).filter(
+      controller => plan.bucketControllers.includes(controller.name),
+    );
+    for (const bucketController of selectedBuckets) {
       for (const file of bucketController.files) {
         this.assertSafeStorageKey(file.key);
         await this.assertObjectExists(
@@ -1616,17 +2127,12 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         );
       }
     }
-    for (const entity of manifest.sqlEntities) {
+    for (const entity of selectedEntities) {
       await this.assertObjectExists(
         context,
-        this.snapshotPrefix(context, snapshotId) + entity.file,
+        this.snapshotPrefix(context, snapshotId) + entity.source.file,
       );
     }
-
-    const orderedEntities = this.orderEntitiesForRestore(
-      currentEntities,
-      manifest.sqlEntities,
-    );
     const backupPrefix = this.snapshotPrefix(
       context,
       `rollback-${options.jobId}`,
@@ -1641,7 +2147,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       options.onProgress({
         phase: 'Staging current bucket objects for rollback',
         completed: 0,
-        total: manifest.bucketControllers.length,
+        total: selectedBuckets.length,
       });
       for (const [index, item] of bucketControllers.entries()) {
         const classFn = context.getClassFunByClassName(item.name);
@@ -1651,8 +2157,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
               | undefined)
           : undefined;
         if (!controller) {
-          continue;
-          // throw new Error(`Storage controller "${item.name}" is unavailable.`);
+          throw new Error(`Storage controller "${item.name}" is unavailable.`);
         }
         const files = await this.listBucketFiles(controller);
         backups.push({ controllerName: item.name, files });
@@ -1692,7 +2197,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         options.onProgress({
           phase: `Staged current bucket ${item.name}`,
           completed: index + 1,
-          total: manifest.bucketControllers.length,
+          total: selectedBuckets.length,
         });
       }
 
@@ -1704,29 +2209,26 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       >();
 
       for (const entity of orderedEntities) {
-        // const classFn = context.getClassFunByClassName(entity.name);
-        // if (!classFn) {
-        //   continue;
-        //   // throw new Error(`SQL entity "${entity.name}" is unavailable.`);
-        // }
         const repoForEntity = queryRunner.manager.getRepository(
-          entity.name,
+          entity.destination.target,
         ) as Repository<Record<string, unknown>>;
 
         if (!repoForEntity) {
-          throw `[restoreSnapshotBackend] no repo for entity "${entity.name}"`;
+          throw new Error(
+            `No repository is available for "${entity.destination.tableName}".`,
+          );
         }
 
-        repositoryByName.set(entity.name, repoForEntity);
+        repositoryByName.set(entity.destination.tableName, repoForEntity);
       }
 
       if (clearAllData) {
         for (const entity of [...orderedEntities].reverse()) {
           options.onProgress({
-            phase: `Clearing SQL table ${entity.name}`,
+            phase: `Clearing SQL table ${entity.destination.tableName}`,
           });
           await repositoryByName
-            .get(entity.name)!
+            .get(entity.destination.tableName)!
             .createQueryBuilder()
             .delete()
             .execute();
@@ -1754,15 +2256,17 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       }
       for (const [index, entity] of orderedEntities.entries()) {
         options.onProgress({
-          phase: `${clearAllData ? 'Restoring' : 'Overlaying'} SQL table ${entity.name}`,
+          phase: `${clearAllData ? 'Restoring' : 'Overlaying'} SQL table ${entity.destination.tableName}`,
           completed: index,
-          total: orderedEntities.length + manifest.bucketControllers.length,
+          total: orderedEntities.length + selectedBuckets.length,
         });
         await this.restoreRows(
           context,
-          this.snapshotPrefix(context, snapshotId) + entity.file,
-          entity,
-          repositoryByName.get(entity.name)!,
+          this.snapshotPrefix(context, snapshotId) + entity.source.file,
+          entity.source,
+          entity.mapping,
+          repositoryByName.get(entity.destination.tableName)!,
+          queryRunner,
           clearAllData,
         );
       }
@@ -1770,10 +2274,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
       if (!clearAllData) {
         bucketChangesStarted = true;
       }
-      for (const [
-        index,
-        bucketController,
-      ] of manifest.bucketControllers.entries()) {
+      for (const [index, bucketController] of selectedBuckets.entries()) {
         for (const file of bucketController.files) {
           await this.restoreBucketFile(
             context,
@@ -1785,7 +2286,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         options.onProgress({
           phase: `${clearAllData ? 'Restored' : 'Overlayed'} bucket ${bucketController.name}`,
           completed: orderedEntities.length + index + 1,
-          total: orderedEntities.length + manifest.bucketControllers.length,
+          total: orderedEntities.length + selectedBuckets.length,
         });
       }
       await queryRunner.commitTransaction();
@@ -1855,8 +2356,8 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     }
     options.onProgress({
       phase: 'Restore completed',
-      completed: orderedEntities.length + manifest.bucketControllers.length,
-      total: orderedEntities.length + manifest.bucketControllers.length,
+      completed: orderedEntities.length + selectedBuckets.length,
+      total: orderedEntities.length + selectedBuckets.length,
     });
   }
   //#endregion
@@ -1866,139 +2367,133 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
     context: EndpointContext,
     storageKey: string,
     entity: TaonSudoRawMigrationEntity,
+    mapping: TaonSudoRawMigrationEntityMapping,
     repository: Repository<Record<string, unknown>>,
+    queryRunner: QueryRunner,
     clearAllData: boolean,
   ): Promise<void> {
     const connection = context.connection!;
+    const metadata = repository.metadata;
+    const driver = connection.driver;
 
-    const queryRunner = connection.createQueryRunner();
-    await queryRunner.connect();
+    const tableName = driver.escape(metadata.tableName);
 
-    try {
-      const metadata = repository.metadata;
-      const driver = connection.driver;
+    const columnsByDatabaseName = new Map(
+      metadata.columns.map(column => [column.databaseName, column]),
+    );
 
-      const tableName = driver.escape(metadata.tableName);
+    const mappingsBySource = new Map(
+      mapping.columns.map(column => [
+        column.sourceColumn,
+        column.destinationColumn,
+      ]),
+    );
 
-      const columnsByDatabaseName = new Map(
-        metadata.columns.map(column => [column.databaseName, column]),
-      );
+    const insertBatch = async (
+      batch: Record<string, unknown>[],
+    ): Promise<void> => {
+      if (!batch.length) {
+        return;
+      }
 
-      const allowedColumns = new Set(entity.columns);
+      for (const row of batch) {
+        const columnNames = Object.keys(row);
 
-      const insertBatch = async (
-        batch: Record<string, unknown>[],
-      ): Promise<void> => {
-        if (!batch.length) {
-          return;
+        if (!columnNames.length) {
+          continue;
         }
 
-        for (const row of batch) {
-          const columnNames = Object.keys(row);
+        if (!clearAllData) {
+          const primaryColumns = metadata.primaryColumns;
 
-          if (!columnNames.length) {
-            continue;
+          const hasCompletePrimaryKey =
+            primaryColumns.length > 0 &&
+            primaryColumns.every(column =>
+              Object.prototype.hasOwnProperty.call(row, column.databaseName),
+            );
+
+          if (hasCompletePrimaryKey) {
+            const where = primaryColumns
+              .map(column => `${driver.escape(column.databaseName)} = ?`)
+              .join(' AND ');
+
+            const params = primaryColumns.map(
+              column => row[column.databaseName],
+            );
+
+            await queryRunner.query(
+              `DELETE FROM ${tableName} WHERE ${where}`,
+              params,
+            );
           }
+        }
 
-          //
-          // When restoring on top of existing data, emulate save/upsert
-          // using the physical primary key.
-          //
-          if (!clearAllData) {
-            const primaryColumns = metadata.primaryColumns;
+        const escapedColumns = columnNames
+          .map(column => driver.escape(column))
+          .join(', ');
 
-            const hasCompletePrimaryKey =
-              primaryColumns.length > 0 &&
-              primaryColumns.every(column =>
-                Object.prototype.hasOwnProperty.call(row, column.databaseName),
-              );
+        const placeholders = columnNames.map(() => '?').join(', ');
 
-            if (hasCompletePrimaryKey) {
-              const where = primaryColumns
-                .map(column => `${driver.escape(column.databaseName)} = ?`)
-                .join(' AND ');
+        const values = columnNames.map(column => row[column]);
 
-              const params = primaryColumns.map(
-                column => row[column.databaseName],
-              );
-
-              await queryRunner.query(
-                `DELETE FROM ${tableName} WHERE ${where}`,
-                params,
-              );
-            }
-          }
-
-          const escapedColumns = columnNames
-            .map(column => driver.escape(column))
-            .join(', ');
-
-          const placeholders = columnNames.map(() => '?').join(', ');
-
-          const values = columnNames.map(column => row[column]);
-
-          await queryRunner.query(
-            `
+        await queryRunner.query(
+          `
             INSERT INTO ${tableName}
             (${escapedColumns})
             VALUES (${placeholders})
           `,
-            values,
-          );
-        }
-      };
-
-      let batch: Record<string, unknown>[] = [];
-
-      await this.forEachLine(context, storageKey, async line => {
-        if (!line.trim()) {
-          return;
-        }
-
-        const parsed: unknown = JSON.parse(line);
-
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          throw new Error(
-            `Invalid row data in snapshot table "${entity.name}".`,
-          );
-        }
-
-        const row: Record<string, unknown> = {};
-
-        for (const [key, value] of Object.entries(parsed)) {
-          if (!allowedColumns.has(key)) {
-            throw new Error(
-              `Unexpected column "${key}" in snapshot table "${entity.name}".`,
-            );
-          }
-
-          //
-          // Snapshot now contains physical database column names.
-          //
-          const column = columnsByDatabaseName.get(key);
-
-          if (!column) {
-            throw new Error(
-              `Unknown database column "${key}" in snapshot table "${entity.name}".`,
-            );
-          }
-
-          row[column.databaseName] = decodeRawValue(value);
-        }
-
-        batch.push(row);
-
-        if (batch.length >= ROW_BATCH_SIZE) {
-          await insertBatch(batch);
-          batch = [];
-        }
-      });
-
-      if (batch.length) {
-        await insertBatch(batch);
+          values,
+        );
       }
-    } finally {
-      await queryRunner.release();
+    };
+
+    let batch: Record<string, unknown>[] = [];
+
+    await this.forEachLine(context, storageKey, async line => {
+      if (!line.trim()) {
+        return;
+      }
+
+      const parsed: unknown = JSON.parse(line);
+
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`Invalid row data in snapshot table "${entity.name}".`);
+      }
+
+      const row: Record<string, unknown> = {};
+
+      for (const [key, value] of Object.entries(parsed)) {
+        if (!mappingsBySource.has(key)) {
+          throw new Error(
+            `Unexpected column "${key}" in snapshot table "${entity.name}".`,
+          );
+        }
+        const destinationName = mappingsBySource.get(key);
+        if (destinationName === null || destinationName === undefined) {
+          continue;
+        }
+
+        const column = columnsByDatabaseName.get(destinationName);
+
+        if (!column) {
+          throw new Error(
+            `Unknown database column "${destinationName}" in destination table "${metadata.tableName}".`,
+          );
+        }
+
+        row[column.databaseName] = decodeRawValue(value);
+      }
+
+      batch.push(row);
+
+      if (batch.length >= ROW_BATCH_SIZE) {
+        await insertBatch(batch);
+        batch = [];
+      }
+    });
+
+    if (batch.length) {
+      await insertBatch(batch);
     }
   }
   //#endregion
@@ -2171,7 +2666,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / read manifest
-  private async readManifest(
+  async readManifest(
     context: EndpointContext,
     snapshotId: string,
   ): Promise<TaonSudoRawMigrationManifest | undefined> {
@@ -2231,7 +2726,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / assert manifest
-  private assertManifest(
+  assertManifest(
     manifest: TaonSudoRawMigrationManifest,
     expectedContextName?: string,
   ): void {
@@ -2268,6 +2763,45 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         !Array.isArray(entity.columns) ||
         entity.columns.some(column => typeof column !== 'string') ||
         new Set(entity.columns).size !== entity.columns.length ||
+        (entity.columnMetadata !== undefined &&
+          (!Array.isArray(entity.columnMetadata) ||
+            entity.columnMetadata.length !== entity.columns.length ||
+            entity.columnMetadata.some(
+              column =>
+                !column ||
+                typeof column.databaseName !== 'string' ||
+                !column.databaseName ||
+                (column.propertyPath !== undefined &&
+                  typeof column.propertyPath !== 'string') ||
+                (column.type !== undefined &&
+                  typeof column.type !== 'string') ||
+                (column.primary !== undefined &&
+                  typeof column.primary !== 'boolean') ||
+                (column.nullable !== undefined &&
+                  typeof column.nullable !== 'boolean') ||
+                (column.generated !== undefined &&
+                  typeof column.generated !== 'boolean') ||
+                (column.default !== undefined &&
+                  typeof column.default !== 'string'),
+            ) ||
+            new Set(entity.columnMetadata.map(column => column.databaseName))
+              .size !== entity.columnMetadata.length)) ||
+        (entity.foreignKeys !== undefined &&
+          (!Array.isArray(entity.foreignKeys) ||
+            entity.foreignKeys.some(
+              foreignKey =>
+                !foreignKey ||
+                !Array.isArray(foreignKey.columns) ||
+                foreignKey.columns.some(column => typeof column !== 'string') ||
+                typeof foreignKey.referencedTableName !== 'string' ||
+                !foreignKey.referencedTableName ||
+                !Array.isArray(foreignKey.referencedColumns) ||
+                foreignKey.referencedColumns.some(
+                  column => typeof column !== 'string',
+                ) ||
+                foreignKey.columns.length !==
+                  foreignKey.referencedColumns.length,
+            ))) ||
         paths.has(entity.file)
       ) {
         throw new Error('Snapshot contains invalid SQL entity metadata.');
@@ -2621,7 +3155,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / get included bucket controllers
-  private getIncludedBucketControllers(
+  getIncludedBucketControllers(
     context: EndpointContext,
   ): { name: string; classFn: Function }[] {
     return context
@@ -2660,22 +3194,25 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   }
   //#endregion
 
-  //#region methods / order entities for restore
-  private orderEntitiesForRestore(
-    metadata: NonNullable<EndpointContext['connection']>['entityMetadatas'],
-    snapshots: TaonSudoRawMigrationEntity[],
-  ): TaonSudoRawMigrationEntity[] {
-    const snapshotsByTable = new Map(
-      snapshots.map(entity => [entity.tableName, entity]),
+  //#region methods / order mapped entities for restore
+  private orderMappedEntitiesForRestore(
+    entities: {
+      mapping: TaonSudoRawMigrationEntityMapping;
+      source: TaonSudoRawMigrationEntity;
+      destination: NonNullable<
+        EndpointContext['connection']
+      >['entityMetadatas'][number];
+    }[],
+  ): typeof entities {
+    const entitiesByTable = new Map(
+      entities.map(entity => [entity.destination.tableName, entity]),
     );
-    const pending = new Set(snapshots.map(entity => entity.tableName));
-    const ordered: TaonSudoRawMigrationEntity[] = [];
+    const pending = new Set(entitiesByTable.keys());
+    const ordered: typeof entities = [];
     while (pending.size) {
       const next = [...pending].find(tableName => {
-        const tableMetadata = metadata.find(
-          item => item.tableName === tableName,
-        );
-        return tableMetadata?.foreignKeys.every(
+        const tableMetadata = entitiesByTable.get(tableName)!.destination;
+        return tableMetadata.foreignKeys.every(
           key => !pending.has(key.referencedEntityMetadata.tableName),
         );
       });
@@ -2685,14 +3222,174 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
         );
       }
       pending.delete(next);
-      ordered.push(snapshotsByTable.get(next)!);
+      ordered.push(entitiesByTable.get(next)!);
     }
     return ordered;
   }
   //#endregion
 
+  //#region methods / current schema entities
+  currentSchemaEntities(
+    context: EndpointContext,
+  ): TaonSudoRawMigrationSchemaEntity[] {
+    return context
+      .connection!.entityMetadatas.filter(metadata =>
+        TaonSudoUtils.isRawMigrationSqlEntityIncluded(
+          metadata.name,
+          metadata.tableName,
+        ),
+      )
+      .map(metadata => ({
+        name: metadata.name,
+        tableName: metadata.tableName,
+        columns: metadata.columns
+          .filter(column => {
+            const hasTaonRepo = !!this.ctx.getClassFunByClassName(
+              metadata.tableName,
+            );
+            return hasTaonRepo
+              ? !column.isVirtual && !column.isVirtualProperty
+              : true;
+          })
+          .map(column => this.columnSchema(column)),
+        foreignKeys: metadata.foreignKeys.map(key => ({
+          columns: key.columns.map(column => column.databaseName),
+          referencedTableName: key.referencedEntityMetadata.tableName,
+          referencedColumns: key.referencedColumns.map(
+            column => column.databaseName,
+          ),
+        })),
+      }));
+  }
+  //#endregion
+
+  //#region methods / column schema
+  private columnSchema(
+    column: NonNullable<
+      EndpointContext['connection']
+    >['entityMetadatas'][number]['columns'][number],
+  ): TaonSudoRawMigrationColumn {
+    const type =
+      typeof column.type === 'string'
+        ? column.type
+        : column.type?.name || 'unknown';
+    const defaultValue =
+      column.default === undefined
+        ? undefined
+        : typeof column.default === 'function'
+          ? column.default()
+          : String(column.default);
+    return {
+      databaseName: column.databaseName,
+      propertyPath: column.propertyPath,
+      type,
+      primary: column.isPrimary,
+      nullable: column.isNullable,
+      generated: column.isGenerated,
+      default: defaultValue,
+    };
+  }
+  //#endregion
+
+  //#region methods / column type compatibility
+  areColumnTypesCompatible(
+    source: TaonSudoRawMigrationColumn,
+    destination: TaonSudoRawMigrationColumn,
+  ): boolean {
+    if (!source.type || !destination.type) {
+      return true;
+    }
+    const normalize = (type: string) =>
+      type.toLowerCase().replace(/\s+/g, '').replace(/\(.*/, '');
+    const sourceType = normalize(source.type);
+    const destinationType = normalize(destination.type);
+    if (sourceType === destinationType) {
+      return true;
+    }
+    const families = [
+      ['int', 'integer', 'bigint', 'smallint', 'tinyint', 'number'],
+      ['varchar', 'nvarchar', 'char', 'text', 'string', 'clob'],
+      ['bool', 'boolean'],
+      ['date', 'datetime', 'timestamp', 'timestamptz'],
+      ['blob', 'binary', 'varbinary', 'bytea', 'buffer'],
+      ['decimal', 'numeric', 'float', 'double', 'real'],
+    ];
+    return families.some(
+      family => family.includes(sourceType) && family.includes(destinationType),
+    );
+  }
+  //#endregion
+
+  //#region methods / schema fingerprint
+  async schemaFingerprint(schema: {
+    entities: TaonSudoRawMigrationSchemaEntity[];
+    buckets: string[];
+  }): Promise<string> {
+    const normalized = JSON.stringify({
+      entities: [...schema.entities]
+        .sort((a, b) => a.tableName.localeCompare(b.tableName))
+        .map(entity => ({
+          ...entity,
+          columns: [...entity.columns].sort((a, b) =>
+            a.databaseName.localeCompare(b.databaseName),
+          ),
+          foreignKeys: [...entity.foreignKeys].sort((a, b) =>
+            `${a.columns.join(',')}:${a.referencedTableName}`.localeCompare(
+              `${b.columns.join(',')}:${b.referencedTableName}`,
+            ),
+          ),
+        })),
+      buckets: [...schema.buckets].sort(),
+    });
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(normalized),
+    );
+    return Array.from(new Uint8Array(digest), byte =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('');
+  }
+  //#endregion
+
+  //#region methods / read first row columns
+  async readFirstRowColumns(
+    context: EndpointContext,
+    storageKey: string,
+  ): Promise<string[]> {
+    const stream = await this.openObject(context, storageKey);
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    try {
+      while (true) {
+        const result = await reader.read();
+        if (result.done) {
+          buffered += decoder.decode();
+          break;
+        }
+        buffered += decoder.decode(result.value, { stream: true });
+        if (buffered.includes('\n')) {
+          break;
+        }
+      }
+      const line = buffered.split('\n', 1)[0]?.trim();
+      if (!line) {
+        return [];
+      }
+      const parsed: unknown = JSON.parse(line);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Snapshot contains invalid SQL row data.');
+      }
+      return Object.keys(parsed);
+    } finally {
+      await reader.cancel();
+      reader.releaseLock();
+    }
+  }
+  //#endregion
+
   //#region methods / require sql connection
-  private requireSqlConnection(context: EndpointContext): void {
+  requireSqlConnection(context: EndpointContext): void {
     if (!context.connection) {
       throw new Error(
         `Context "${context.contextName}" does not have an initialized SQL connection.`,
@@ -2781,7 +3478,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / snapshot prefix
-  private snapshotPrefix(context: EndpointContext, id: string): string {
+  snapshotPrefix(context: EndpointContext, id: string): string {
     return `${this.contextPrefix(context)}${id}/`;
   }
   //#endregion
@@ -2886,7 +3583,7 @@ export class TaonSudoRawMigrationRepository extends TaonBaseCustomRepository {
   //#endregion
 
   //#region methods / assert snapshot id
-  private assertSnapshotId(id: string, allowStaging = false): void {
+  assertSnapshotId(id: string, allowStaging = false): void {
     if (
       !this.isSnapshotId(id) &&
       !(allowStaging && /^staging-[0-9a-f-]{36}$/.test(id))

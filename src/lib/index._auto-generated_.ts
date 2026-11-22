@@ -34,6 +34,7 @@ export * from './taon-sudo-backoffice/taon-sudo-data-backoffice/taon-sudo-data-b
 export * from './taon-sudo-backoffice/taon-sudo-http-errors-backoffice/taon-sudo-http-errors-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-http-errors-backoffice/taon-sudo-http-errors-backoffice.models'; 
 export * from './taon-sudo-backoffice/taon-sudo-http-errors-backoffice/taon-sudo-http-errors-backoffice.routes'; // @browser
+export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.api.service'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.component'; // @browser
 export * from './taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migrations-backoffice.models'; 

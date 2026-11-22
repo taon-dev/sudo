@@ -3,7 +3,10 @@ import { Injectable } from '@angular/core';
 import { TaonBaseAngularService } from 'taon/src';
 
 import {
+  TaonSudoRawMigrationCompatibilityReport,
   TaonSudoRawMigrationJob,
+  TaonSudoRawMigrationPlanValidation,
+  TaonSudoRawMigrationRestorePlan,
   TaonSudoRawMigrationSummary,
 } from '../../taon-sudo/taon-sudo-raw-migration.models';
 import { TaonSudoRawMigrationController } from '../../taon-sudo/taon-sudo-raw-migration.controller';
@@ -12,9 +15,7 @@ import { TaonSudoUploadStorageController } from '../../taon-sudo/taon-sudo-uploa
 
 @Injectable()
 export class TaonSudoRawMigrationsBackofficeApiService extends TaonBaseAngularService {
-  private readonly controller = this.inject(
-    TaonSudoRawMigrationController,
-  );
+  private readonly controller = this.inject(TaonSudoRawMigrationController);
 
   private readonly uploadController = this.inject(
     TaonSudoUploadStorageController,
@@ -45,16 +46,40 @@ export class TaonSudoRawMigrationsBackofficeApiService extends TaonBaseAngularSe
     return this.json(this.controller.stopRawMigrationJob(jobId));
   }
 
+  analyzeRestore(
+    contextName: string,
+    snapshotId: string,
+    clearAllData: boolean,
+  ): Promise<TaonSudoRawMigrationCompatibilityReport> {
+    return this.json(
+      this.controller.analyzeRawMigrationRestore(
+        contextName,
+        snapshotId,
+        clearAllData,
+      ),
+    );
+  }
+
+  validateRestorePlan(
+    contextName: string,
+    plan: TaonSudoRawMigrationRestorePlan,
+  ): Promise<TaonSudoRawMigrationPlanValidation> {
+    return this.json(
+      this.controller.validateRawMigrationRestorePlan(contextName, plan),
+    );
+  }
+
   restoreSnapshot(
     contextName: string,
     snapshotId: string,
-    clearAllData = false,
+    plan: TaonSudoRawMigrationRestorePlan,
   ): Promise<TaonSudoRawMigrationJob> {
     return this.json(
       this.controller.restoreRawMigrationSnapshot(
         contextName,
         snapshotId,
-        clearAllData,
+        plan.clearAllData,
+        plan,
       ),
     );
   }

@@ -26,8 +26,11 @@ import {
 import { UtilsOs } from 'tnp-core/src';
 
 import {
+  TaonSudoRawMigrationCompatibilityReport,
   TaonSudoRawMigrationJob,
   TaonSudoRawMigrationJobUpdate,
+  TaonSudoRawMigrationPlanValidation,
+  TaonSudoRawMigrationRestorePlan,
   TaonSudoRawMigrationSummary,
 } from './taon-sudo-raw-migration.models';
 import { TaonSudoRawMigrationRepository } from './taon-sudo-raw-migration.repository';
@@ -52,16 +55,11 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     TaonSudoRawMigrationRepository,
   );
 
-  protected readonly taonSessionProvider =
-    this.inject(TaonSessionProvider);
+  protected readonly taonSessionProvider = this.inject(TaonSessionProvider);
 
-  protected readonly authRepository = this.inject(
-    TaonAuthContextRepository,
-  );
+  protected readonly authRepository = this.inject(TaonAuthContextRepository);
 
-  protected readonly taonSessionRepository = this.inject(
-    TaonSessionRepository,
-  );
+  protected readonly taonSessionRepository = this.inject(TaonSessionRepository);
 
   protected readonly uploadStorageController = this.inject(
     TaonSudoUploadStorageController,
@@ -70,6 +68,40 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
   protected readonly jobs = new Map<string, ActiveMigrationJob>();
 
   protected contexts: EndpointContext[] = [];
+  //#endregion
+
+  //#region methods / analyze raw migration restore
+  @GET()
+  analyzeRawMigrationRestore(
+    @Query('contextName') contextName: string,
+    @Query('snapshotId') snapshotId: string,
+    @Query('clearAllData') clearAllData?: boolean,
+  ): Taon.Response<TaonSudoRawMigrationCompatibilityReport> {
+    //#region @backendFunc
+    return async () =>
+      this.rawMigrationRepository.analyzeRestore(
+        this.getContext(contextName),
+        snapshotId,
+        clearAllData === true,
+      );
+    //#endregion
+  }
+  //#endregion
+
+  //#region methods / validate raw migration restore plan
+  @POST()
+  validateRawMigrationRestorePlan(
+    @Query('contextName') contextName: string,
+    @Body() plan: TaonSudoRawMigrationRestorePlan,
+  ): Taon.Response<TaonSudoRawMigrationPlanValidation> {
+    //#region @backendFunc
+    return async () =>
+      this.rawMigrationRepository.validateRestorePlan(
+        this.getContext(contextName),
+        plan,
+      );
+    //#endregion
+  }
   //#endregion
 
   //#region methods / after all ctx inited
@@ -201,6 +233,7 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
     @Query('contextName') contextName: string,
     @Query('snapshotId') snapshotId: string,
     @Query('clearAllData') clearAllData?: boolean,
+    @Body() plan?: TaonSudoRawMigrationRestorePlan,
   ): Taon.Response<TaonSudoRawMigrationJob> {
     //#region @backendFunc
     return async () => {
@@ -209,7 +242,8 @@ export class TaonSudoRawMigrationController extends TaonBaseController<
       await this.runJob(job, () =>
         this.rawMigrationRepository.restoreSnapshot(context, snapshotId, {
           jobId: job.id,
-          clearAllData: clearAllData === true,
+          clearAllData: plan?.clearAllData ?? clearAllData === true,
+          plan,
           onProgress: update => this.updateJob(job, update),
         }),
       );

@@ -10,20 +10,27 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterOutlet } from '@angular/router';
 import { Translation } from '@taon-dev/i18n/src';
+import { firstValueFrom } from 'rxjs';
 import { Taon } from 'taon/src';
 
 import {
   TaonSudoRawMigrationJob,
+  TaonSudoRawMigrationRestorePlan,
   TaonSudoRawMigrationSummary,
 } from '../../taon-sudo/taon-sudo-raw-migration.models';
 
 import { TaonSudoRawMigrationsBackofficeApiService } from './taon-sudo-raw-migrations-backoffice.api.service';
+import {
+  TaonSudoRawMigrationRestoreEditorComponent,
+  TaonSudoRawMigrationRestoreEditorData,
+} from './taon-sudo-raw-migration-restore-editor.component';
 //#endregion
 
 const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
@@ -37,6 +44,7 @@ const t = Translation.for(Taon.__FILE_RELATIVE_PATH, Taon.LANG_IMPORT_MAP);
     DatePipe,
     RouterOutlet,
     MatButtonModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
@@ -51,6 +59,8 @@ export class TaonSudoRawMigrationsBackofficeComponent
   t = t.for(this);
 
   private readonly api = inject(TaonSudoRawMigrationsBackofficeApiService);
+
+  private readonly dialog = inject(MatDialog);
 
   readonly contexts = signal<string[]>([]);
 
@@ -244,25 +254,41 @@ export class TaonSudoRawMigrationsBackofficeComponent
   //#region methods / restore snapshot
   async restoreSnapshot(snapshot: TaonSudoRawMigrationSummary): Promise<void> {
     const context = this.selectedContext();
-    const clearAllData = this.clearAllData();
-    const confirmation = clearAllData
-      ? this.t.gettext(
-          'Clear all eligible SQL rows and bucket objects, then restore this snapshot? KV data and excluded TaonSudo assets will not be changed.',
-        )
-      : this.t.gettext(
-          'Overlay this snapshot? Matching SQL records will be replaced and snapshot bucket keys overwritten. Other data will be kept.',
-        );
-    if (!context || !globalThis.confirm(confirmation)) {
+    if (!context) {
       return;
     }
     await this.runRequest(
-      this.t.gettext('Restoring raw migration snapshot'),
+      this.t.gettext('Analyzing raw migration snapshot'),
       async () => {
-        const job = await this.api.restoreSnapshot(
+        const report = await this.api.analyzeRestore(
           context,
           snapshot.id,
-          clearAllData,
+          this.clearAllData(),
         );
+        const plan = await firstValueFrom(
+          this.dialog
+            .open<
+              TaonSudoRawMigrationRestoreEditorComponent,
+              TaonSudoRawMigrationRestoreEditorData,
+              TaonSudoRawMigrationRestorePlan
+            >(TaonSudoRawMigrationRestoreEditorComponent, {
+              data: { contextName: context, report, api: this.api },
+              width: 'min(96vw, 1200px)',
+              maxWidth: '96vw',
+              height: 'min(94vh, 900px)',
+              maxHeight: '94vh',
+              disableClose: true,
+            })
+            .afterClosed(),
+        );
+        if (!plan) {
+          this.statusMessage.set('');
+          return;
+        }
+        this.statusMessage.set(
+          this.t.gettext('Restoring raw migration snapshot'),
+        );
+        const job = await this.api.restoreSnapshot(context, snapshot.id, plan);
         await this.followJob(job);
       },
     );

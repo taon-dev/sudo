@@ -16,6 +16,14 @@ The Data tab works like phpMyAdmin. You can browse SQL tables and edit or delete
 
 Use the Raw Migrations tab to create, export, import, and restore snapshots of your application data. You can use snapshots to back up data or move it between environments.
 
+Every restore opens the Raw Migration Restore Editor. It analyzes the snapshot
+against the current SQL schema, lets you map renamed tables and columns, and
+requires you to choose the SQL tables and bucket controllers that may be
+modified. The preview validates required columns, primary keys, types, and
+schema fingerprints before execution. Mapping presets can be imported or
+downloaded as JSON for reuse. Tables and buckets excluded from the plan are not
+cleared or restored.
+
 ## App State
 
 **Work in progress**

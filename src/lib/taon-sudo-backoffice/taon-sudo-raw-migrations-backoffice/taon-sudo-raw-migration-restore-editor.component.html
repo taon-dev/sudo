@@ -1,0 +1,328 @@
+<header class="editor-header">
+  <div>
+    <h2 mat-dialog-title>
+      {{ t.gettext('Raw Migration Restore Editor') }}
+    </h2>
+    <p>
+      {{
+        t.gettext(
+          'Map historical data to the current schema, select what to restore, and validate the operation before any data is changed.'
+        )
+      }}
+    </p>
+  </div>
+
+  <div class="preset-actions">
+    <label class="file-button">
+      {{ t.gettext('Import mapping') }}
+      <input
+        type="file"
+        accept=".json,application/json"
+        (change)="importPlan($event)" />
+    </label>
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="downloadPlan()">
+      {{ t.gettext('Download mapping') }}
+    </button>
+  </div>
+</header>
+
+<nav
+  class="steps"
+  aria-label="Restore editor steps">
+  @for (label of stepLabels; track label; let index = $index) {
+    <button
+      type="button"
+      [class.active]="step() === index"
+      [class.optional]="data.report.schemasCompatible && index < 2"
+      (click)="setStep(index)">
+      <span>{{ index + 1 }}</span>
+      {{ label }}
+      @if (data.report.schemasCompatible && index < 2) {
+        <small>{{ t.gettext('optional') }}</small>
+      }
+    </button>
+  }
+</nav>
+
+<mat-dialog-content>
+  @if (errorMessage()) {
+    <p
+      class="error"
+      role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (step() < 3) {
+    <mat-form-field
+      appearance="outline"
+      class="search">
+      <mat-label>{{ t.gettext('Search tables') }}</mat-label>
+      <input
+        matInput
+        [value]="search()"
+        (input)="setSearch($event)" />
+    </mat-form-field>
+  }
+
+  @if (step() === 0) {
+    <section>
+      <h3>{{ t.gettext('Entity mapping') }}</h3>
+      <p>
+        {{
+          t.gettext(
+            'Exact table matches are selected automatically. Map renamed tables or skip obsolete data.'
+          )
+        }}
+      </p>
+
+      <div class="mapping-list">
+        @for (mapping of filteredMappings(); track mapping.sourceTableName) {
+          <article class="mapping-row">
+            <mat-checkbox
+              [checked]="mapping.selected"
+              [disabled]="!mapping.destinationTableName"
+              (change)="setEntitySelected(mapping, $event.checked)">
+            </mat-checkbox>
+            <div>
+              <strong>{{ sourceEntity(mapping).name }}</strong>
+              <small>{{ sourceEntity(mapping).tableName }}</small>
+            </div>
+            <span class="arrow">→</span>
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t.gettext('Current table') }}</mat-label>
+              <mat-select
+                [value]="mapping.destinationTableName"
+                (selectionChange)="setEntityDestination(mapping, $event.value)">
+                <mat-option [value]="null">
+                  {{ t.gettext('Skip entity') }}
+                </mat-option>
+                @for (
+                  entity of data.report.currentEntities;
+                  track entity.tableName
+                ) {
+                  <mat-option [value]="entity.tableName">
+                    {{ entity.name }} ({{ entity.tableName }})
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </article>
+        }
+      </div>
+    </section>
+  } @else if (step() === 1) {
+    <section>
+      <h3>{{ t.gettext('Column mapping') }}</h3>
+      <p>
+        {{
+          t.gettext(
+            'Skipped columns are omitted. Required destination columns must be mapped or have a database default.'
+          )
+        }}
+      </p>
+
+      @for (mapping of filteredMappings(); track mapping.sourceTableName) {
+        @if (mapping.selected && destinationEntity(mapping); as destination) {
+          <article class="column-card">
+            <h4>
+              {{ sourceEntity(mapping).tableName }} →
+              {{ destination.tableName }}
+            </h4>
+            @for (
+              columnMapping of mapping.columns;
+              track columnMapping.sourceColumn
+            ) {
+              <div class="column-row">
+                <code>{{ columnMapping.sourceColumn }}</code>
+                <span class="arrow">→</span>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ t.gettext('Destination column') }}</mat-label>
+                  <mat-select
+                    [value]="columnMapping.destinationColumn"
+                    (selectionChange)="
+                      setColumnDestination(
+                        mapping,
+                        columnMapping.sourceColumn,
+                        $event.value
+                      )
+                    ">
+                    <mat-option [value]="null">
+                      {{ t.gettext('Skip column') }}
+                    </mat-option>
+                    @for (
+                      column of destination.columns;
+                      track column.databaseName
+                    ) {
+                      <mat-option [value]="column.databaseName">
+                        {{ column.databaseName }}
+                        @if (
+                          !column.nullable &&
+                          !column.generated &&
+                          column.default === undefined
+                        ) {
+                          ({{ t.gettext('required') }})
+                        }
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            }
+          </article>
+        }
+      }
+    </section>
+  } @else if (step() === 2) {
+    <section>
+      <div class="section-heading">
+        <div>
+          <h3>{{ t.gettext('Select tables') }}</h3>
+          <p>
+            {{
+              t.gettext('Only selected SQL tables and buckets can be modified.')
+            }}
+          </p>
+        </div>
+        <div>
+          <button
+            mat-button
+            type="button"
+            (click)="selectAll(true)">
+            {{ t.gettext('Select all') }}
+          </button>
+          <button
+            mat-button
+            type="button"
+            (click)="selectAll(false)">
+            {{ t.gettext('Select none') }}
+          </button>
+        </div>
+      </div>
+
+      <mat-checkbox
+        [checked]="plan().clearAllData"
+        (change)="setClearAllData($event.checked)">
+        {{ t.gettext('Clear selected destinations before restore') }}
+      </mat-checkbox>
+
+      <div class="selection-grid">
+        <div>
+          <h4>{{ t.gettext('SQL tables') }}</h4>
+          @for (mapping of filteredMappings(); track mapping.sourceTableName) {
+            <mat-checkbox
+              [checked]="mapping.selected"
+              [disabled]="!mapping.destinationTableName"
+              (change)="setEntitySelected(mapping, $event.checked)">
+              {{ sourceEntity(mapping).tableName }}
+              @if (mapping.destinationTableName !== mapping.sourceTableName) {
+                →
+                {{ mapping.destinationTableName || t.gettext('skipped') }}
+              }
+            </mat-checkbox>
+          }
+        </div>
+
+        <div>
+          <h4>{{ t.gettext('Bucket controllers') }}</h4>
+          @for (name of data.report.snapshotBucketControllers; track name) {
+            <mat-checkbox
+              [checked]="isBucketSelected(name)"
+              [disabled]="!data.report.currentBucketControllers.includes(name)"
+              (change)="setBucketSelected(name, $event.checked)">
+              {{ name }}
+            </mat-checkbox>
+          }
+        </div>
+      </div>
+    </section>
+  } @else {
+    <section>
+      <h3>{{ t.gettext('Restore preview') }}</h3>
+      <div class="preview-summary">
+        <strong>{{ validation()?.selectedEntityCount ?? 0 }}</strong>
+        <span>{{ t.gettext('SQL tables selected') }}</span>
+        <strong>{{ validation()?.selectedBucketControllerCount ?? 0 }}</strong>
+        <span>{{ t.gettext('bucket controllers selected') }}</span>
+        <strong>
+          {{
+            plan().clearAllData
+              ? t.gettext('Clear then restore')
+              : t.gettext('Overlay')
+          }}
+        </strong>
+        <span>{{ t.gettext('restore mode') }}</span>
+      </div>
+
+      @if (validating()) {
+        <p role="status">{{ t.gettext('Validating restore plan…') }}</p>
+      } @else if (validation(); as result) {
+        @if (result.valid) {
+          <p class="valid">
+            {{
+              t.gettext(
+                'The restore plan is valid. It will be revalidated immediately before execution.'
+              )
+            }}
+          </p>
+        }
+        @if (result.errors.length) {
+          <h4>{{ t.gettext('Blocking issues') }}</h4>
+          <ul class="issues errors">
+            @for (issue of result.errors; track $index) {
+              <li>
+                <strong>{{ issue.code }}</strong> — {{ issue.message }}
+              </li>
+            }
+          </ul>
+        }
+        @if (result.warnings.length) {
+          <h4>{{ t.gettext('Warnings') }}</h4>
+          <ul class="issues warnings">
+            @for (issue of result.warnings; track $index) {
+              <li>
+                <strong>{{ issue.code }}</strong> — {{ issue.message }}
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button
+    mat-button
+    type="button"
+    mat-dialog-close>
+    {{ t.gettext('Cancel') }}
+  </button>
+  @if (step() > 0) {
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="setStep(step() - 1)">
+      {{ t.gettext('Back') }}
+    </button>
+  }
+  @if (step() < 3) {
+    <button
+      mat-flat-button
+      type="button"
+      (click)="setStep(step() + 1)">
+      {{ t.gettext('Continue') }}
+    </button>
+  } @else {
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="validating() || !validation()?.valid"
+      (click)="confirmRestore()">
+      {{ t.gettext('Confirm and restore') }}
+    </button>
+  }
+</mat-dialog-actions>

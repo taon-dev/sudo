@@ -1,0 +1,175 @@
+:host {
+  display: block;
+}
+
+.editor-header,
+.section-heading,
+.preset-actions {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.editor-header {
+  padding: 1rem 1.5rem 0;
+}
+
+.editor-header h2,
+.editor-header p,
+h3 {
+  margin: 0;
+}
+
+.preset-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.file-button {
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0.55rem 0.8rem;
+}
+
+.file-button input {
+  display: none;
+}
+
+.steps {
+  border-bottom: 1px solid #ddd;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 1rem 1.5rem 0;
+}
+
+.steps button {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  padding: 0.8rem 0.4rem;
+}
+
+.steps button.active {
+  border-color: #1976d2;
+  color: #0d47a1;
+  font-weight: 600;
+}
+
+.steps span {
+  background: #e0e0e0;
+  border-radius: 50%;
+  display: inline-grid;
+  height: 1.6rem;
+  margin-right: 0.35rem;
+  place-items: center;
+  width: 1.6rem;
+}
+
+.steps small {
+  display: block;
+}
+
+mat-dialog-content {
+  min-height: 55vh;
+  padding-top: 1rem;
+}
+
+.search {
+  width: min(28rem, 100%);
+}
+
+.mapping-list,
+.selection-grid > div {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.mapping-row,
+.column-row {
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(10rem, 1fr) auto minmax(14rem, 1fr);
+}
+
+.mapping-row small {
+  display: block;
+}
+
+.column-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.column-row {
+  grid-template-columns: minmax(10rem, 1fr) auto minmax(14rem, 1fr);
+}
+
+.column-row mat-form-field,
+.mapping-row mat-form-field {
+  margin-top: 0.5rem;
+}
+
+.selection-grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.preview-summary {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: auto 1fr;
+  margin: 1.5rem 0;
+}
+
+.issues {
+  border-left: 4px solid;
+  padding: 0.75rem 0.75rem 0.75rem 2rem;
+}
+
+.errors,
+.error {
+  color: #b3261e;
+}
+
+.warnings {
+  border-color: #ed6c02;
+}
+
+.valid {
+  color: #2e7d32;
+}
+
+@media (max-width: 760px) {
+  .editor-header,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mapping-row,
+  .column-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .mapping-row mat-form-field,
+  .column-row mat-form-field {
+    grid-column: 1 / -1;
+  }
+
+  .selection-grid {
+    grid-template-columns: 1fr;
+  }
+}

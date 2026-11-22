@@ -46,246 +46,263 @@ msgstr ""
 msgid "Exact table matches are selected automatically. Map renamed tables or skip obsolete data."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:111
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:113
 msgid "Current table"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:116
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:118
 msgid "Skip entity"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:134
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:137
 msgid "Column mapping"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:136
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:137
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:139
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:140
 msgid "Skipped snapshot columns are omitted. Resolve required destination columns by mapping a snapshot column or choosing a value strategy."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:158
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:167
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:168
 msgid "Destination column"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:169
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:180
 msgid "Skip column"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:182
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:193
 msgid "required"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:193
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:204
 msgid "Missing destination columns"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:208
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:220
 msgid "Type"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:208
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:212
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:220
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:225
 msgid "Nullable"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:208
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:213
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:220
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:226
 msgid "Not nullable"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:208
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:218
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:220
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:231
 msgid "Database default available"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:208
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:219
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:220
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:232
 msgid "No database default"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:222
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:235
 msgid "Required"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:225
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:238
 msgid "Generated by database"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:231
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:244
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:245
 msgid "The database generates this value."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:236
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:251
 msgid "Value strategy"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:244
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:263
 msgid "Select value strategy"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:263
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:282
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:283
 msgid "Value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:279
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:302
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:303
 msgid "Constant value"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:295
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:324
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:325
 msgid "Start"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:311
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:342
 msgid "Step"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:332
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:363
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:364
 msgid "Minimum"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:347
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:380
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:381
 msgid "Maximum"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:366
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:401
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:402
 msgid "Hash source mode"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:377
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:414
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:415
 msgid "Deterministic from source columns"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:380
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:421
 msgid "Random hash per row"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:387
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:428
 msgid "Source columns"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:415
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:458
 msgid "Source snapshot column"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:427
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:470
 msgid "Select source column"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:455
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:501
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:502
 msgid "Select a value strategy to continue."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:459
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:509
 msgid "Value strategy is valid."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:474
-msgid "Select tables"
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:527
+msgid "Select restore destinations"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:476
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:477
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:529
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:530
 msgid "Only selected SQL tables and buckets can be modified."
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:486
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:540
 msgid "Select all"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:492
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:547
 msgid "Select none"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:500
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:555
 msgid "Clear selected destinations before restore"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:505
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:560
 msgid "SQL tables"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:513
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:514
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:575
 msgid "skipped"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:521
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:580
+msgid "No SQL tables to display."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:588
 msgid "Bucket controllers"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:535
-msgid "Restore preview"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:538
-msgid "SQL tables selected"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:540
-msgid "bucket controllers selected"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:542
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:544
-msgid "Clear then restore"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:542
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:545
-msgid "Overlay"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:548
-msgid "restore mode"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:558
-msgid "Column mappings"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:565
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:568
-msgid "Skipped"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:573
-msgid "Generated destination values"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:590
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:591
-msgid "Random values, UUIDs, timestamps, and generated hashes are created during restore; they are not previewed as fixed row values."
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:602
-msgid "Validating restore plan…"
-msgstr ""
-
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:606
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:607
-msgid "✓ All required destination columns are resolved. ✓ Column types are compatible. ✓ Ready to restore; the plan will be revalidated before execution."
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:605
+msgid "No bucket controllers in the snapshot."
 msgstr ""
 
 #: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:614
-msgid "Blocking issues"
+msgid "Restore preview"
 msgstr ""
 
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:617
+msgid "SQL tables selected"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:619
+msgid "bucket controllers selected"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:621
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:623
+msgid "Clear then restore"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:621
 #: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:624
-msgid "Warnings"
+msgid "Overlay"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:627
+msgid "restore mode"
 msgstr ""
 
 #: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:643
-msgid "Cancel"
+msgid "Column mappings"
 msgstr ""
 
 #: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:650
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:651
+msgid "Skipped"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:656
+msgid "Generated destination values"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:673
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:674
+msgid "Random values, UUIDs, timestamps, and generated hashes are created during restore; they are not previewed as fixed row values."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:686
+msgid "Validating restore plan…"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:690
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:691
+msgid "✓ All required destination columns are resolved. ✓ Column types are compatible. ✓ Ready to restore; the plan will be revalidated before execution."
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:698
+msgid "Blocking issues"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:708
+msgid "Warnings"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:727
+msgid "Cancel"
+msgstr ""
+
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:734
 msgid "Back"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:658
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:742
 msgid "Continue"
 msgstr ""
 
-#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:666
+#: src/lib/taon-sudo-backoffice/taon-sudo-raw-migrations-backoffice/taon-sudo-raw-migration-restore-editor.component.html:750
 msgid "Confirm and restore"
 msgstr ""
